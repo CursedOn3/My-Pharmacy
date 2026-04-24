@@ -2,21 +2,16 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import Header from "@/components/pharmacy/Header";
 import Hero from "@/components/pharmacy/Hero";
-import SearchBar from "@/components/pharmacy/SearchBar";
 import Categories from "@/components/pharmacy/Categories";
 import ProductGrid from "@/components/pharmacy/ProductGrid";
-import PromoStrip from "@/components/pharmacy/PromoStrip";
 import Brands from "@/components/pharmacy/Brands";
 import HealthBanners from "@/components/pharmacy/HealthBanners";
 import CerealFeature from "@/components/pharmacy/CerealFeature";
-import PrescriptionUpload from "@/components/pharmacy/PrescriptionUpload";
-import Consultation from "@/components/pharmacy/Consultation";
 import Testimonials from "@/components/pharmacy/Testimonials";
 import CTABanners from "@/components/pharmacy/CTABanners";
 import FAQ from "@/components/pharmacy/FAQ";
 import AppDownload from "@/components/pharmacy/AppDownload";
 import Footer from "@/components/pharmacy/Footer";
-import { useCart } from "@/context/CartContext";
 import { ALL, baby, todaysDeals, trending } from "@/lib/products";
 
 export const Route = createFileRoute("/")({
@@ -24,7 +19,6 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const { open } = useCart();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All");
 
@@ -51,20 +45,8 @@ function Index() {
       <Header />
       <main>
         <Hero />
-        <SearchBar
-          query={query}
-          onQuery={setQuery}
-          category={category}
-          onCategory={setCategory}
-          categories={categories}
-          resultsCount={results.length}
-          results={results}
-          onPick={open}
-        />
         <Categories />
         <ProductGrid title="Today's best deals" subtitle="for you!" products={todaysDeals} />
-        <PromoStrip />
-        
         <ProductGrid
           title="Trending products"
           subtitle="for you!"
@@ -74,8 +56,6 @@ function Index() {
         <HealthBanners />
         <ProductGrid title="Baby Food Collection" products={baby} seeAllSlug="baby" />
         <CerealFeature />
-        <PrescriptionUpload />
-        <Consultation />
         <Brands />
         <Testimonials />
         <CTABanners />
