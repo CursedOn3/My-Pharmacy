@@ -14,6 +14,7 @@ const Header = () => {
   const { count } = useCart();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const isCustomer = user && user.role !== "admin";
 
   return (
     <header className="w-full border-b border-border bg-background sticky top-0 z-40">
@@ -45,12 +46,14 @@ const Header = () => {
         </div>
 
         <nav className="ml-auto flex items-center gap-1">
-          <Link
-            to="/prescription"
-            className="hidden md:inline-flex items-center gap-1.5 text-xs font-semibold bg-mint text-primary-deep px-3 py-2 rounded-full hover:bg-primary transition-colors"
-          >
-            Upload Rx
-          </Link>
+          {user && user.role !== "admin" && (
+            <Link
+              to="/prescription"
+              className="hidden md:inline-flex items-center gap-1.5 text-xs font-semibold bg-mint text-primary-deep px-3 py-2 rounded-full hover:bg-primary transition-colors"
+            >
+              Upload Rx
+            </Link>
+          )}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -77,9 +80,11 @@ const Header = () => {
                       <LayoutDashboard className="mr-2 h-4 w-4" /> Admin console
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem onClick={() => navigate({ to: "/prescription" })}>
-                    Upload prescription
-                  </DropdownMenuItem>
+                  {user.role !== "admin" && (
+                    <DropdownMenuItem onClick={() => navigate({ to: "/prescription" })}>
+                      Upload prescription
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={() => {
@@ -103,24 +108,28 @@ const Header = () => {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <button
-            className="p-2 rounded-full hover:bg-muted hidden sm:inline-flex"
-            aria-label="Wishlist"
-          >
-            <Heart className="h-5 w-5" />
-          </button>
-          <Link
-            to="/cart"
-            className="relative p-2 rounded-full hover:bg-muted"
-            aria-label="Cart"
-          >
-            <ShoppingCart className="h-5 w-5" />
-            {count > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 h-4 w-4 text-[10px] font-bold rounded-full bg-accent text-accent-foreground flex items-center justify-center">
-                {count}
-              </span>
-            )}
-          </Link>
+          {isCustomer && (
+            <button
+              className="p-2 rounded-full hover:bg-muted hidden sm:inline-flex"
+              aria-label="Wishlist"
+            >
+              <Heart className="h-5 w-5" />
+            </button>
+          )}
+          {isCustomer && (
+            <Link
+              to="/cart"
+              className="relative p-2 rounded-full hover:bg-muted"
+              aria-label="Cart"
+            >
+              <ShoppingCart className="h-5 w-5" />
+              {count > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 h-4 w-4 text-[10px] font-bold rounded-full bg-accent text-accent-foreground flex items-center justify-center">
+                  {count}
+                </span>
+              )}
+            </Link>
+          )}
           <button className="md:hidden p-2 rounded-full hover:bg-muted" aria-label="Menu">
             <Menu className="h-5 w-5" />
           </button>

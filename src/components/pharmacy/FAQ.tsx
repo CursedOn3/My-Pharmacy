@@ -1,7 +1,13 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 
-const faqs = [
+type FAQItem = {
+  q: string;
+  a: string;
+  highlighted?: boolean;
+};
+
+const faqs: FAQItem[] = [
   { q: "How do I take an online consultation with a doctor on Medicare?", a: "Go to the Consult tab, choose your specialty, and book a slot. A licensed doctor will join your video call within minutes." },
   { q: "Are your online doctors qualified?", a: "Yes — every doctor is board-certified and verified by our medical team." },
   { q: "Can I keep the same doctor for follow-ups?", a: "Absolutely. You can request the same doctor for follow-ups, building continuity of care." },
@@ -10,7 +16,8 @@ const faqs = [
 ];
 
 const FAQ = () => {
-  const [open, setOpen] = useState<number | null>(3);
+  const [open, setOpen] = useState<number | null>(null);
+
   return (
     <section className="container mx-auto px-4 py-12">
       <h2 className="font-display text-3xl md:text-4xl font-extrabold text-primary-deep text-center mb-8">
@@ -19,16 +26,22 @@ const FAQ = () => {
       <div className="max-w-3xl mx-auto space-y-3">
         {faqs.map((f, i) => {
           const isOpen = open === i;
-          const isHighlight = f.highlighted;
+          const isHighlight = isOpen;
+          const itemId = `faq-item-${i}`;
+
           return (
             <div
-              key={i}
+              key={f.q}
               className={`rounded-2xl border transition-colors ${
                 isHighlight ? "bg-mint border-primary" : "bg-card border-border"
               }`}
             >
               <button
+                type="button"
                 onClick={() => setOpen(isOpen ? null : i)}
+                aria-expanded={isOpen}
+                aria-controls={`${itemId}-panel`}
+                id={`${itemId}-button`}
                 className="w-full flex items-center justify-between p-5 text-left"
               >
                 <span className="font-semibold text-primary-deep text-sm md:text-base pr-4">
@@ -41,7 +54,12 @@ const FAQ = () => {
                 />
               </button>
               {isOpen && (
-                <div className="px-5 pb-5 text-sm text-primary-deep/70 leading-relaxed">
+                <div
+                  id={`${itemId}-panel`}
+                  role="region"
+                  aria-labelledby={`${itemId}-button`}
+                  className="px-5 pb-5 text-sm text-primary-deep/70 leading-relaxed"
+                >
                   {f.a}
                 </div>
               )}
