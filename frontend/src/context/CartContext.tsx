@@ -1,9 +1,19 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode
+} from "react";
 import { toast } from "sonner";
 import type { Product } from "@/lib/products";
 import { useStore } from "@/context/StoreContext";
+import { useAuth } from "@/context/AuthContext";
+import { api } from "@/lib/api";
 
-export type CartItem = Product & { qty: number };
+export type CartItem = Product & { qty: number; cartItemId?: string };
 
 type CartCtx = {
   items: CartItem[];
@@ -25,7 +35,45 @@ const parsePrice = (price: string) => Number(price.replace(/[^0-9.]/g, "")) || 0
 export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [items, setItems] = useState<CartItem[]>([]);
   const [selected, setSelected] = useState<Product | null>(null);
-  const { getStock } = useStore();
+  const { getStock, inventory } = useStore();
+  const { user } = useAuth();
+
+  const inventoryByName = useMemo(() => {
+    return new Map(inventory.map((i) => [i.name, i]));
+  }, [inventory]);
+
+  const loadCart = useCallback(async () => {
+    if (!user) return;
+    try {
+      const data = await api.listCart();
+      const next: CartItem[] = data
+        .map((row) => {
+          const product = inventory.find((p) => p.id === row.product_id);
+          if (!product) return null;
+          return {
+            ...product,
+            qty: row.quantity,
+            cartItemId: row.id
+          };
+        })
+        .filter(Boolean) as CartItem[];
+      setItems(next);
+    } catch {
+      // ignore load errors for now
+    }
+  }, [inventory, user]);
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      if (!active) return;
+      await loadCart();
+    };
+    load();
+    return () => {
+      active = false;
+    };
+  }, [loadCart]);
 
   const add: CartCtx["add"] = (p, qty = 1) => {
     const stock = getStock(p.name);
@@ -48,10 +96,27 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       toast.success("Added to cart", { description: p.name });
       return [...prev, { ...p, qty }];
     });
+    const item = inventoryByName.get(p.name) ?? (p.id ? { id: p.id } : null);
+    if (user && item?.id) {
+      api
+        .addCartItem({ product_id: item.id, quantity: qty })
+        .then(loadCart)
+        .catch(() => {
+          // ignore errors, UI already updated
+        });
+    }
   };
 
   const remove: CartCtx["remove"] = (name) => {
-    setItems((prev) => prev.filter((i) => i.name !== name));
+    setItems((prev) => {
+      const target = prev.find((i) => i.name === name);
+      if (user && target?.cartItemId) {
+        api.removeCartItem(target.cartItemId).catch(() => {
+          // ignore
+        });
+      }
+      return prev.filter((i) => i.name !== name);
+    });
   };
 
   const setQty: CartCtx["setQty"] = (name, qty) => {
@@ -66,11 +131,30 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
           description: `Only ${stock} available`,
         });
       }
-      return prev.map((i) => (i.name === name ? { ...i, qty: clamped } : i));
+      const next = prev.map((i) => (i.name === name ? { ...i, qty: clamped } : i));
+      if (user) {
+        const target = inventoryByName.get(name);
+        if (target) {
+          api
+            .addCartItem({ product_id: target.id, quantity: clamped })
+            .then(loadCart)
+            .catch(() => {
+              // ignore
+            });
+        }
+      }
+      return next;
     });
   };
 
-  const clear = () => setItems([]);
+  const clear = () => {
+    setItems([]);
+    if (user) {
+      api.clearCart().catch(() => {
+        // ignore
+      });
+    }
+  };
 
   return (
     <CartContext.Provider

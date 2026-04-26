@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BadgePercent, Megaphone, Plus, Trash2 } from "lucide-react";
 import { useStore } from "@/context/StoreContext";
 import { toast } from "sonner";
+import { api, type MarketingBanner, type MarketingDiscount } from "@/lib/api";
 
 export const Route = createFileRoute("/admin/marketing")({
   component: AdminMarketingPage,
@@ -11,46 +12,8 @@ export const Route = createFileRoute("/admin/marketing")({
   }),
 });
 
-type DiscountRule = {
-  id: string;
-  productId: string;
-  percent: number;
-  active: boolean;
-};
-
-type Banner = {
-  id: string;
-  title: string;
-  placement: "home" | "products" | "checkout";
-  active: boolean;
-};
-
-const STORAGE = {
-  discounts: "medicare.admin.discounts.v1",
-  banners: "medicare.admin.banners.v1",
-} as const;
-
-const safeRead = <T,>(key: string, fallback: T): T => {
-  if (typeof window === "undefined") return fallback;
-  try {
-    const raw = window.localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-};
-
-const safeWrite = (key: string, value: unknown) => {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    // ignore quota errors
-  }
-};
-
-const newId = (prefix: string) =>
-  `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+type DiscountRule = MarketingDiscount;
+type Banner = MarketingBanner;
 
 function AdminMarketingPage() {
   const { inventory } = useStore();
@@ -63,17 +26,25 @@ function AdminMarketingPage() {
   const [placement, setPlacement] = useState<Banner["placement"]>("home");
 
   useEffect(() => {
-    setDiscounts(safeRead<DiscountRule[]>(STORAGE.discounts, []));
-    setBanners(safeRead<Banner[]>(STORAGE.banners, []));
+    let active = true;
+    const load = async () => {
+      try {
+        const [discountData, bannerData] = await Promise.all([
+          api.adminListDiscounts(),
+          api.adminListBanners()
+        ]);
+        if (!active) return;
+        setDiscounts(discountData);
+        setBanners(bannerData);
+      } catch {
+        toast.error("Failed to load marketing data");
+      }
+    };
+    load();
+    return () => {
+      active = false;
+    };
   }, []);
-
-  useEffect(() => {
-    safeWrite(STORAGE.discounts, discounts);
-  }, [discounts]);
-
-  useEffect(() => {
-    safeWrite(STORAGE.banners, banners);
-  }, [banners]);
 
   const productById = useMemo(
     () => new Map(inventory.map((item) => [item.id, item])),
@@ -83,7 +54,7 @@ function AdminMarketingPage() {
   const activeDiscounts = discounts.filter((d) => d.active).length;
   const activeBanners = banners.filter((b) => b.active).length;
 
-  const addDiscount = () => {
+  const addDiscount = async () => {
     const pct = Number(percent);
     if (!productId) {
       toast.error("Select a product first");
@@ -93,35 +64,37 @@ function AdminMarketingPage() {
       toast.error("Discount must be between 1% and 90%");
       return;
     }
-    setDiscounts((prev) => [
-      {
-        id: newId("disc"),
-        productId,
+    try {
+      const created = await api.adminCreateDiscount({
+        product_id: productId,
         percent: Math.round(pct),
-        active: true,
-      },
-      ...prev,
-    ]);
-    toast.success("Discount rule added");
+        active: true
+      });
+      setDiscounts((prev) => [created, ...prev]);
+      toast.success("Discount rule added");
+    } catch {
+      toast.error("Failed to add discount rule");
+    }
   };
 
-  const addBanner = () => {
+  const addBanner = async () => {
     const text = bannerTitle.trim();
     if (text.length < 3) {
       toast.error("Banner title is too short");
       return;
     }
-    setBanners((prev) => [
-      {
-        id: newId("bnr"),
+    try {
+      const created = await api.adminCreateBanner({
         title: text.slice(0, 80),
         placement,
-        active: true,
-      },
-      ...prev,
-    ]);
-    setBannerTitle("");
-    toast.success("Banner added");
+        active: true
+      });
+      setBanners((prev) => [created, ...prev]);
+      setBannerTitle("");
+      toast.success("Banner added");
+    } catch {
+      toast.error("Failed to add banner");
+    }
   };
 
   return (
@@ -174,7 +147,7 @@ function AdminMarketingPage() {
               <p className="text-sm text-muted-foreground">No discount rules yet.</p>
             ) : (
               discounts.map((rule) => {
-                const product = productById.get(rule.productId);
+                const product = productById.get(rule.product_id);
                 return (
                   <div
                     key={rule.id}
@@ -188,13 +161,18 @@ function AdminMarketingPage() {
                     </div>
                     <button
                       type="button"
-                      onClick={() =>
-                        setDiscounts((prev) =>
-                          prev.map((d) =>
-                            d.id === rule.id ? { ...d, active: !d.active } : d,
-                          ),
-                        )
-                      }
+                      onClick={async () => {
+                        try {
+                          const next = await api.adminUpdateDiscount(rule.id, {
+                            active: !rule.active
+                          });
+                          setDiscounts((prev) =>
+                            prev.map((d) => (d.id === rule.id ? next : d))
+                          );
+                        } catch {
+                          toast.error("Failed to update discount");
+                        }
+                      }}
                       className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
                         rule.active
                           ? "bg-mint text-primary-deep"
@@ -205,9 +183,14 @@ function AdminMarketingPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() =>
-                        setDiscounts((prev) => prev.filter((d) => d.id !== rule.id))
-                      }
+                      onClick={async () => {
+                        try {
+                          await api.adminDeleteDiscount(rule.id);
+                          setDiscounts((prev) => prev.filter((d) => d.id !== rule.id));
+                        } catch {
+                          toast.error("Failed to delete discount");
+                        }
+                      }}
                       className="h-8 w-8 rounded-full inline-flex items-center justify-center bg-destructive/10 text-destructive hover:bg-destructive/20"
                       aria-label="Delete discount rule"
                     >
@@ -269,13 +252,18 @@ function AdminMarketingPage() {
                   </div>
                   <button
                     type="button"
-                    onClick={() =>
-                      setBanners((prev) =>
-                        prev.map((b) =>
-                          b.id === banner.id ? { ...b, active: !b.active } : b,
-                        ),
-                      )
-                    }
+                    onClick={async () => {
+                      try {
+                        const next = await api.adminUpdateBanner(banner.id, {
+                          active: !banner.active
+                        });
+                        setBanners((prev) =>
+                          prev.map((b) => (b.id === banner.id ? next : b))
+                        );
+                      } catch {
+                        toast.error("Failed to update banner");
+                      }
+                    }}
                     className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
                       banner.active
                         ? "bg-mint text-primary-deep"
@@ -286,9 +274,14 @@ function AdminMarketingPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() =>
-                      setBanners((prev) => prev.filter((b) => b.id !== banner.id))
-                    }
+                    onClick={async () => {
+                      try {
+                        await api.adminDeleteBanner(banner.id);
+                        setBanners((prev) => prev.filter((b) => b.id !== banner.id));
+                      } catch {
+                        toast.error("Failed to delete banner");
+                      }
+                    }}
                     className="h-8 w-8 rounded-full inline-flex items-center justify-center bg-destructive/10 text-destructive hover:bg-destructive/20"
                     aria-label="Delete banner"
                   >

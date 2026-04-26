@@ -188,14 +188,18 @@ function AdminInventoryPage() {
                       <Pencil className="h-3 w-3" /> Edit
                     </button>
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         if (
                           window.confirm(
                             `Delete "${p.name}"? This cannot be undone.`,
                           )
                         ) {
-                          deleteProduct(p.id);
-                          toast.success(`Removed ${p.name}`);
+                          try {
+                            await deleteProduct(p.id);
+                            toast.success(`Removed ${p.name}`);
+                          } catch (err) {
+                            toast.error("Failed to delete product");
+                          }
                         }
                       }}
                       className="inline-flex items-center justify-center bg-destructive/10 text-destructive rounded-full px-3 py-1.5 text-xs font-semibold hover:bg-destructive/20"
@@ -214,18 +218,22 @@ function AdminInventoryPage() {
       <ProductDialog
         open={creating}
         onClose={() => setCreating(false)}
-        onSubmit={(values) => {
-          addProduct({
-            name: values.name,
-            brand: values.brand || "Generic",
-            category: values.category || "General",
-            description: values.description,
-            price: `$${values.price.toFixed(2)}`,
-            image: values.image,
-            stock: values.stock,
-          });
-          toast.success("Product added");
-          setCreating(false);
+        onSubmit={async (values) => {
+          try {
+            await addProduct({
+              name: values.name,
+              brand: values.brand || "Generic",
+              category: values.category || "General",
+              description: values.description,
+              price: `$${values.price.toFixed(2)}`,
+              image: values.image,
+              stock: values.stock,
+            });
+            toast.success("Product added");
+            setCreating(false);
+          } catch (err) {
+            toast.error("Failed to add product");
+          }
         }}
       />
 
@@ -233,19 +241,23 @@ function AdminInventoryPage() {
         open={!!editing}
         initial={editing}
         onClose={() => setEditing(null)}
-        onSubmit={(values) => {
+        onSubmit={async (values) => {
           if (!editing) return;
-          updateProduct(editing.id, {
-            name: values.name,
-            brand: values.brand || editing.brand || "Generic",
-            category: values.category || editing.category || "General",
-            description: values.description,
-            price: `$${values.price.toFixed(2)}`,
-            image: values.image,
-            stock: values.stock,
-          });
-          toast.success("Product updated");
-          setEditing(null);
+          try {
+            await updateProduct(editing.id, {
+              name: values.name,
+              brand: values.brand || editing.brand || "Generic",
+              category: values.category || editing.category || "General",
+              description: values.description,
+              price: `$${values.price.toFixed(2)}`,
+              image: values.image,
+              stock: values.stock,
+            });
+            toast.success("Product updated");
+            setEditing(null);
+          } catch (err) {
+            toast.error("Failed to update product");
+          }
         }}
       />
     </div>

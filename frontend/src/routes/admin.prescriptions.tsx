@@ -62,12 +62,16 @@ function AdminPrescriptionsPage() {
     [prescriptions],
   );
 
-  const handleDecision = (status: PrescriptionStatus) => {
+  const handleDecision = async (status: PrescriptionStatus) => {
     if (!activeRx) return;
-    updatePrescription(activeRx.id, { status, reviewerNote });
-    toast.success(`${activeRx.id} ${status.toLowerCase()}`);
-    setActive(null);
-    setReviewerNote("");
+    try {
+      await updatePrescription(activeRx.id, { status, reviewerNote });
+      toast.success(`${activeRx.id} ${status.toLowerCase()}`);
+      setActive(null);
+      setReviewerNote("");
+    } catch (err) {
+      toast.error("Failed to update prescription");
+    }
   };
 
   return (

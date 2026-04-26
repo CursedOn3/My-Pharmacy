@@ -6,6 +6,7 @@ import Header from "@/components/pharmacy/Header";
 import Footer from "@/components/pharmacy/Footer";
 import ProductCard from "@/components/pharmacy/ProductCard";
 import { ALL, CATEGORIES, type Product } from "@/lib/products";
+import { useStore } from "@/context/StoreContext";
 import { Search, SlidersHorizontal, X, ChevronRight, Star } from "lucide-react";
 
 const SORT_VALUES = ["featured", "price-asc", "price-desc", "rating", "discount", "name"] as const;
@@ -58,14 +59,17 @@ function ProductsPage() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/products" });
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const { inventory } = useStore();
+
+  const source = inventory.length ? inventory : ALL;
 
   const brands = useMemo(
-    () => Array.from(new Set(ALL.map((p) => p.brand))).sort(),
-    []
+    () => Array.from(new Set(source.map((p) => p.brand))).sort(),
+    [source]
   );
 
   const filtered = useMemo(() => {
-    let list: Product[] = ALL.slice();
+    let list: Product[] = source.slice();
 
     if (search.q.trim()) {
       const q = search.q.trim().toLowerCase();
@@ -131,7 +135,7 @@ function ProductsPage() {
     }
 
     return list;
-  }, [search]);
+  }, [search, source]);
 
   const update = (patch: Partial<typeof search>) =>
     navigate({ search: (prev: typeof search) => ({ ...prev, ...patch }) });

@@ -6,7 +6,6 @@ import Footer from "@/components/pharmacy/Footer";
 import { useAuth } from "@/context/AuthContext";
 import { useStore, type Order } from "@/context/StoreContext";
 import { useCart } from "@/context/CartContext";
-import { ALL } from "@/lib/products";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/orders")({
@@ -30,7 +29,7 @@ export const Route = createFileRoute("/orders")({
 
 function OrdersPage() {
   const { user } = useAuth();
-  const { orders } = useStore();
+  const { orders, inventory } = useStore();
   const { add } = useCart();
   const navigate = useNavigate();
 
@@ -51,7 +50,7 @@ function OrdersPage() {
   const reorder = (order: Order) => {
     let added = 0;
     for (const line of order.lines) {
-      const product = ALL.find((p) => p.name === line.name);
+      const product = inventory.find((p) => p.name === line.name);
       if (product) {
         add(product, line.qty);
         added++;

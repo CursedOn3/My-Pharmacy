@@ -7,7 +7,9 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { ALL, type Product } from "@/lib/products";
+import { ALL, CATEGORIES, type Product } from "@/lib/products";
+import { api, type OrderDto, type PrescriptionDto, type ProductDto } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 
 /* ================================ TYPES ================================ */
 
@@ -68,11 +70,12 @@ type StoreCtx = {
   orders: Order[];
   customers: Customer[];
   prescriptions: Prescription[];
+  loading: boolean;
 
   // inventory
-  addProduct: (p: Omit<InventoryItem, "id">) => InventoryItem;
-  updateProduct: (id: string, patch: Partial<InventoryItem>) => void;
-  deleteProduct: (id: string) => void;
+  addProduct: (p: Omit<InventoryItem, "id">) => Promise<InventoryItem>;
+  updateProduct: (id: string, patch: Partial<InventoryItem>) => Promise<void>;
+  deleteProduct: (id: string) => Promise<void>;
   getStock: (idOrName: string) => number;
 
   // orders / customers
@@ -81,80 +84,52 @@ type StoreCtx = {
     customerName: string;
     lines: { productName: string; qty: number }[];
     shipping: number;
-  }) => Order | null;
-  updateOrderStatus: (id: string, status: OrderStatus) => void;
+  }) => Promise<Order | null>;
+  updateOrderStatus: (id: string, status: OrderStatus) => Promise<void>;
 
   // prescriptions
-  addPrescription: (
-    p: Omit<Prescription, "id" | "uploadedAt" | "status">,
-  ) => Prescription;
+  addPrescription: (p: Prescription) => void;
   updatePrescription: (
     id: string,
     patch: Partial<Pick<Prescription, "status" | "reviewerNote">>,
-  ) => void;
+  ) => Promise<void>;
 };
 
 const StoreContext = createContext<StoreCtx | null>(null);
 
 /* =============================== HELPERS =============================== */
 
-const STORAGE = {
-  inventory: "medicare.inventory.v1",
-  orders: "medicare.orders.v1",
-  customers: "medicare.customers.v1",
-  prescriptions: "medicare.prescriptions.v1",
-};
-
 const parsePrice = (price: string) =>
   Number(String(price).replace(/[^0-9.]/g, "")) || 0;
 
-const slugId = (s: string) =>
-  s
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "")
-    .slice(0, 60);
+const toPrice = (value: number) => `$${value.toFixed(2)}`;
 
-const newId = (prefix: string) =>
-  `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+const toTitle = (value: string) =>
+  value ? value.charAt(0).toUpperCase() + value.slice(1) : value;
 
-const safeRead = <T,>(key: string, fallback: T): T => {
-  if (typeof window === "undefined") return fallback;
-  try {
-    const raw = window.localStorage.getItem(key);
-    if (!raw) return fallback;
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
+const mapCategorySlug = (slug: string | null) => {
+  if (!slug) return "General";
+  const match = CATEGORIES.find((c) => c.slug === slug);
+  return match?.name ?? slug.replace(/-/g, " ");
 };
 
-const safeWrite = (key: string, value: unknown) => {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    // ignore quota errors
-  }
-};
-
-/** Seed inventory from the static product catalog (one entry per unique name). */
-const seedInventory = (): InventoryItem[] => {
-  const seen = new Set<string>();
-  const items: InventoryItem[] = [];
-  for (const p of ALL) {
-    if (seen.has(p.name)) continue;
-    seen.add(p.name);
-    items.push({
-      ...p,
-      id: slugId(p.name),
-      stock: 25,
-      description:
-        p.description ??
-        "Pharmacist-approved formula, manufactured in certified facilities.",
-    });
-  }
-  return items;
+const fromDto = (dto: ProductDto): InventoryItem => {
+  const fallback = ALL.find((p) => p.name === dto.name);
+  return {
+    id: dto.id,
+    name: dto.name,
+    brand: fallback?.brand ?? "Generic",
+    category: fallback?.category ?? mapCategorySlug(dto.category_slug),
+    price: toPrice(dto.price),
+    oldPrice: fallback?.oldPrice,
+    discount: fallback?.discount,
+    image: dto.image_url ?? fallback?.image ?? "",
+    rating: fallback?.rating,
+    description:
+      fallback?.description ??
+      "Pharmacist-approved formula, manufactured in certified facilities.",
+    stock: dto.stock
+  };
 };
 
 /* ============================== PROVIDER =============================== */
@@ -162,50 +137,144 @@ const seedInventory = (): InventoryItem[] => {
 export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
-  // Hydrate from localStorage on mount (browser only)
-  useEffect(() => {
-    const inv = safeRead<InventoryItem[]>(STORAGE.inventory, []);
-    setInventory(inv.length > 0 ? inv : seedInventory());
-    setOrders(safeRead<Order[]>(STORAGE.orders, []));
-    setCustomers(safeRead<Customer[]>(STORAGE.customers, []));
-    setPrescriptions(safeRead<Prescription[]>(STORAGE.prescriptions, []));
+  const inventoryById = useMemo(() => {
+    return new Map(inventory.map((i) => [i.id, i]));
+  }, [inventory]);
+
+  const inventoryByName = useMemo(() => {
+    return new Map(inventory.map((i) => [i.name, i]));
+  }, [inventory]);
+
+  const mapOrder = useCallback(
+    (dto: OrderDto): Order => {
+      const lines = dto.items.map((line) => {
+        const product = inventoryById.get(line.product_id);
+        return {
+          productId: line.product_id,
+          name: product?.name ?? "Unknown item",
+          image: product?.image ?? "",
+          qty: line.quantity,
+          unitPrice: product ? parsePrice(product.price) : 0
+        };
+      });
+      const subtotal = lines.reduce((s, l) => s + l.unitPrice * l.qty, 0);
+      const shipping = lines.length > 0 ? 4.99 : 0;
+      return {
+        id: dto.id,
+        customerEmail: dto.customer_email,
+        customerName: dto.customer_name,
+        lines,
+        subtotal,
+        shipping,
+        total: subtotal + shipping,
+        status: toTitle(dto.status) as OrderStatus,
+        createdAt: dto.created_at
+      };
+    },
+    [inventoryById]
+  );
+
+  const mapPrescription = useCallback((dto: PrescriptionDto): Prescription => {
+    return {
+      id: dto.id,
+      customerEmail: dto.customer_email,
+      customerName: dto.customer_name,
+      fileName: dto.file_name,
+      fileType: dto.file_type,
+      fileSize: dto.file_size,
+      previewUrl: null,
+      note: dto.notes ?? undefined,
+      status: toTitle(dto.status) as PrescriptionStatus,
+      uploadedAt: dto.created_at,
+      reviewedAt: dto.reviewer_note ? new Date().toISOString() : undefined,
+      reviewerNote: dto.reviewer_note ?? undefined
+    };
   }, []);
 
-  // Persist
+  const loadInventory = useCallback(async () => {
+    const data = await api.listProducts();
+    setInventory(data.map(fromDto));
+  }, []);
+
+  const loadOrders = useCallback(async () => {
+    if (!user) {
+      setOrders([]);
+      return;
+    }
+    const data = user.role === "admin" ? await api.adminListOrders() : await api.listOrders();
+    setOrders(data.map(mapOrder));
+  }, [mapOrder, user]);
+
+  const loadPrescriptions = useCallback(async () => {
+    if (!user) {
+      setPrescriptions([]);
+      return;
+    }
+    const data =
+      user.role === "admin"
+        ? await api.adminListPrescriptions()
+        : await api.listPrescriptions();
+    setPrescriptions(data.map(mapPrescription));
+  }, [mapPrescription, user]);
+
   useEffect(() => {
-    if (inventory.length) safeWrite(STORAGE.inventory, inventory);
-  }, [inventory]);
-  useEffect(() => {
-    safeWrite(STORAGE.orders, orders);
-  }, [orders]);
-  useEffect(() => {
-    safeWrite(STORAGE.customers, customers);
-  }, [customers]);
-  useEffect(() => {
-    safeWrite(STORAGE.prescriptions, prescriptions);
-  }, [prescriptions]);
+    let active = true;
+    const loadAll = async () => {
+      try {
+        await loadInventory();
+        if (active) {
+          await Promise.all([loadOrders(), loadPrescriptions()]);
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    loadAll();
+    return () => {
+      active = false;
+    };
+  }, [loadInventory, loadOrders, loadPrescriptions]);
 
   /* ----------------------------- inventory ---------------------------- */
 
-  const addProduct: StoreCtx["addProduct"] = useCallback((p) => {
-    const item: InventoryItem = {
-      ...p,
-      id: newId("prd"),
-    };
-    setInventory((prev) => [item, ...prev]);
-    return item;
+  const addProduct: StoreCtx["addProduct"] = useCallback(async (p) => {
+    const price = parsePrice(p.price);
+    const created = await api.adminCreateProduct({
+      name: p.name,
+      price,
+      image_url: p.image,
+      category_slug: p.category?.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+      stock: p.stock
+    });
+    const mapped = fromDto(created);
+    setInventory((prev) => [mapped, ...prev]);
+    return mapped;
   }, []);
 
-  const updateProduct: StoreCtx["updateProduct"] = useCallback((id, patch) => {
-    setInventory((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, ...patch } : i)),
-    );
-  }, []);
+  const updateProduct: StoreCtx["updateProduct"] = useCallback(
+    async (id, patch) => {
+      await api.adminUpdateProduct(id, {
+        name: patch.name,
+        price: patch.price ? parsePrice(patch.price) : undefined,
+        image_url: patch.image,
+        category_slug: patch.category
+          ? patch.category.toLowerCase().replace(/[^a-z0-9]+/g, "-")
+          : undefined,
+        stock: patch.stock
+      });
+      setInventory((prev) =>
+        prev.map((i) => (i.id === id ? { ...i, ...patch } : i)),
+      );
+    },
+    []
+  );
 
-  const deleteProduct: StoreCtx["deleteProduct"] = useCallback((id) => {
+  const deleteProduct: StoreCtx["deleteProduct"] = useCallback(async (id) => {
+    await api.adminDeleteProduct(id);
     setInventory((prev) => prev.filter((i) => i.id !== id));
   }, []);
 
@@ -216,52 +285,18 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         inventory.find((i) => i.name === idOrName);
       return item?.stock ?? 0;
     },
-    [inventory],
+    [inventory]
   );
 
   /* ------------------------------ orders ------------------------------ */
 
-  const upsertCustomer = useCallback(
-    (email: string, name: string, orderTotal: number, when: string) => {
-      setCustomers((prev) => {
-        const existing = prev.find((c) => c.email === email);
-        if (existing) {
-          return prev.map((c) =>
-            c.email === email
-              ? {
-                  ...c,
-                  name: name || c.name,
-                  totalOrders: c.totalOrders + 1,
-                  totalSpent: c.totalSpent + orderTotal,
-                  lastOrderAt: when,
-                }
-              : c,
-          );
-        }
-        return [
-          {
-            email,
-            name: name || email.split("@")[0],
-            joinedAt: when,
-            totalOrders: 1,
-            totalSpent: orderTotal,
-            lastOrderAt: when,
-          },
-          ...prev,
-        ];
-      });
-    },
-    [],
-  );
-
   const createOrder: StoreCtx["createOrder"] = useCallback(
-    ({ customerEmail, customerName, lines, shipping }) => {
-      // Resolve lines against current inventory + check stock
+    async ({ customerEmail, customerName, lines, shipping }) => {
       const resolved: OrderLine[] = [];
-      const stockUpdates: { id: string; newStock: number }[] = [];
+      const payload: { product_id: string; quantity: number }[] = [];
 
       for (const l of lines) {
-        const item = inventory.find((i) => i.name === l.productName);
+        const item = inventoryByName.get(l.productName);
         if (!item) return null;
         if (item.stock < l.qty) return null;
         resolved.push({
@@ -269,76 +304,92 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
           name: item.name,
           image: item.image,
           qty: l.qty,
-          unitPrice: parsePrice(item.price),
+          unitPrice: parsePrice(item.price)
         });
-        stockUpdates.push({ id: item.id, newStock: item.stock - l.qty });
+        payload.push({ product_id: item.id, quantity: l.qty });
       }
 
-      const subtotal = resolved.reduce((s, l) => s + l.unitPrice * l.qty, 0);
-      const total = subtotal + shipping;
-      const when = new Date().toISOString();
-      const order: Order = {
-        id: `MED-${Math.floor(10000 + Math.random() * 90000)}`,
-        customerEmail,
-        customerName,
-        lines: resolved,
-        subtotal,
-        shipping,
-        total,
-        status: "Pending",
-        createdAt: when,
-      };
+      const dto = await api.createOrder({
+        items: payload,
+        notes: "",
+        customer_email: customerEmail,
+        customer_name: customerName
+      });
 
-      // Apply stock decrement
+      const order = mapOrder(dto);
+      const total = order.subtotal + shipping;
+      const nextOrder = { ...order, shipping, total };
+
+      setOrders((prev) => [nextOrder, ...prev]);
       setInventory((prev) =>
         prev.map((i) => {
-          const u = stockUpdates.find((x) => x.id === i.id);
-          return u ? { ...i, stock: u.newStock } : i;
-        }),
+          const line = resolved.find((l) => l.productId === i.id);
+          if (!line) return i;
+          return { ...i, stock: Math.max(0, i.stock - line.qty) };
+        })
       );
-      setOrders((prev) => [order, ...prev]);
-      upsertCustomer(customerEmail, customerName, total, when);
-      return order;
+      return nextOrder;
     },
-    [inventory, upsertCustomer],
+    [inventoryByName, mapOrder]
   );
 
   const updateOrderStatus: StoreCtx["updateOrderStatus"] = useCallback(
-    (id, status) => {
+    async (id, status) => {
+      await api.adminUpdateOrder(id, status);
       setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o)));
     },
-    [],
+    []
   );
 
   /* --------------------------- prescriptions -------------------------- */
 
   const addPrescription: StoreCtx["addPrescription"] = useCallback((p) => {
-    const rx: Prescription = {
-      ...p,
-      id: `RX-${Math.floor(1000 + Math.random() * 9000)}`,
-      uploadedAt: new Date().toISOString(),
-      status: "Pending",
-    };
-    setPrescriptions((prev) => [rx, ...prev]);
-    return rx;
+    setPrescriptions((prev) => [p, ...prev]);
   }, []);
 
   const updatePrescription: StoreCtx["updatePrescription"] = useCallback(
-    (id, patch) => {
+    async (id, patch) => {
+      await api.adminUpdatePrescription(id, {
+        status: patch.status ?? "Pending",
+        reviewer_note: patch.reviewerNote
+      });
       setPrescriptions((prev) =>
         prev.map((rx) =>
           rx.id === id
             ? {
                 ...rx,
                 ...patch,
-                reviewedAt: new Date().toISOString(),
+                reviewedAt: new Date().toISOString()
               }
-            : rx,
-        ),
+            : rx
+        )
       );
     },
-    [],
+    []
   );
+
+  const customers = useMemo<Customer[]>(() => {
+    const map = new Map<string, Customer>();
+    for (const order of orders) {
+      const email = order.customerEmail.toLowerCase();
+      const existing = map.get(email);
+      if (existing) {
+        existing.totalOrders += 1;
+        existing.totalSpent += order.total;
+        existing.lastOrderAt = order.createdAt;
+      } else {
+        map.set(email, {
+          email: order.customerEmail,
+          name: order.customerName || order.customerEmail.split("@")[0],
+          joinedAt: order.createdAt,
+          totalOrders: 1,
+          totalSpent: order.total,
+          lastOrderAt: order.createdAt
+        });
+      }
+    }
+    return Array.from(map.values());
+  }, [orders]);
 
   const value = useMemo<StoreCtx>(
     () => ({
@@ -346,6 +397,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       orders,
       customers,
       prescriptions,
+      loading,
       addProduct,
       updateProduct,
       deleteProduct,
@@ -353,13 +405,14 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       createOrder,
       updateOrderStatus,
       addPrescription,
-      updatePrescription,
+      updatePrescription
     }),
     [
       inventory,
       orders,
       customers,
       prescriptions,
+      loading,
       addProduct,
       updateProduct,
       deleteProduct,
@@ -367,8 +420,8 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       createOrder,
       updateOrderStatus,
       addPrescription,
-      updatePrescription,
-    ],
+      updatePrescription
+    ]
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

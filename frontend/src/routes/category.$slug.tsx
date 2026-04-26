@@ -2,12 +2,10 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import Header from "@/components/pharmacy/Header";
 import Footer from "@/components/pharmacy/Footer";
 import ProductCard from "@/components/pharmacy/ProductCard";
-import {
-  CATEGORIES,
-  productsByCategorySlug,
-  slugToCategory,
-} from "@/lib/products";
+import { ALL, CATEGORIES, slugToCategory } from "@/lib/products";
 import { ChevronRight } from "lucide-react";
+import { useStore } from "@/context/StoreContext";
+import { useMemo } from "react";
 
 export const Route = createFileRoute("/category/$slug")({
   component: CategoryPage,
@@ -32,7 +30,19 @@ export const Route = createFileRoute("/category/$slug")({
 function CategoryPage() {
   const { slug } = Route.useParams();
   const cat = slugToCategory(slug);
-  const products = productsByCategorySlug(slug);
+  const { inventory } = useStore();
+  const source = inventory.length ? inventory : ALL;
+
+  const products = useMemo(() => {
+    if (!cat) return [];
+    const target = cat.name.toLowerCase();
+    return source.filter((p) => {
+      const pc = p.category.toLowerCase();
+      if (target.includes("baby")) return pc.includes("baby");
+      if (target.includes("cold")) return pc.includes("cold");
+      return pc === target;
+    });
+  }, [cat, source]);
 
   return (
     <div className="min-h-screen bg-background">

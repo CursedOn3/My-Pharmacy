@@ -87,8 +87,8 @@ const Header = () => {
                   )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
-                    onClick={() => {
-                      logout();
+                    onClick={async () => {
+                      await logout();
                       navigate({ to: "/" });
                     }}
                   >
