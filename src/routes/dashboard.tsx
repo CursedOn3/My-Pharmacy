@@ -14,6 +14,7 @@ import {
   AlertCircle,
   TrendingUp,
   CheckCircle2,
+  BadgePercent,
   Clock,
   Eye,
 } from "lucide-react";
@@ -261,6 +262,7 @@ function AdminDashboard() {
             <QuickAction to="/admin/prescriptions" icon={FileText} label="Review Rx" desc="Approve / reject" bg="bg-sun" />
             <QuickAction to="/admin/customers" icon={Users} label="Customers" desc="Manage accounts" bg="bg-peach" />
             <QuickAction to="/admin/inventory" icon={CheckCircle2} label="Inventory" desc="Stock & catalog" bg="bg-rose" />
+            <QuickAction to="/admin/marketing" icon={BadgePercent} label="Discounts & banners" desc="Manage promos" bg="bg-cream" />
           </div>
         </Card>
       </div>
@@ -355,7 +357,8 @@ function QuickAction({
     | "/admin/orders"
     | "/admin/prescriptions"
     | "/admin/customers"
-    | "/admin/inventory";
+    | "/admin/inventory"
+    | "/admin/marketing";
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   desc: string;
