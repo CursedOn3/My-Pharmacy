@@ -185,12 +185,16 @@ function AdminOrdersPage() {
                         <div className="relative inline-block">
                           <select
                             value={o.status}
-                            onChange={(e) => {
-                              updateOrderStatus(
-                                o.id,
-                                e.target.value as OrderStatus,
-                              );
-                              toast.success(`${o.id} → ${e.target.value}`);
+                            onChange={async (e) => {
+                              try {
+                                await updateOrderStatus(
+                                  o.id,
+                                  e.target.value as OrderStatus,
+                                );
+                                toast.success(`${o.id} → ${e.target.value}`);
+                              } catch (err) {
+                                toast.error("Failed to update order");
+                              }
                             }}
                             className="appearance-none bg-muted text-primary-deep text-xs font-semibold rounded-full pl-3 pr-7 py-1.5 outline-none cursor-pointer hover:bg-mint"
                           >

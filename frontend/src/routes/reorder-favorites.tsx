@@ -6,6 +6,7 @@ import Footer from "@/components/pharmacy/Footer";
 import { useFavorites } from "../context/FavoritesContext";
 import { useCart } from "@/context/CartContext";
 import { toast } from "sonner";
+import { useAuth } from "@/context/AuthContext";
 
 export const Route = createFileRoute("/reorder-favorites")({
   component: ReorderFavoritesPage,
@@ -32,6 +33,35 @@ function ReorderFavoritesPage() {
   const { favorites } = useFavorites();
   const { add } = useCart();
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <Header />
+        <main className="container mx-auto px-4 py-8 flex-1">
+          <div className="bg-card border border-border rounded-3xl p-10 text-center shadow-card max-w-xl mx-auto">
+            <div className="mx-auto h-14 w-14 rounded-2xl bg-mint flex items-center justify-center mb-4">
+              <Heart className="h-6 w-6 text-primary-deep" />
+            </div>
+            <h1 className="font-display text-2xl font-extrabold text-primary-deep">
+              Sign in to reorder favorites
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Favorites are stored in your account for quick reordering.
+            </p>
+            <Link
+              to="/login"
+              className="inline-flex mt-5 items-center gap-1.5 bg-primary-deep text-primary-deep-foreground px-5 py-2.5 rounded-full text-sm font-semibold"
+            >
+              Sign in
+            </Link>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   const [selected, setSelected] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(favorites.map((p) => [p.name, true])),

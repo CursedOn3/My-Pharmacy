@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { UploadCloud, FileText, X, CheckCircle2, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useStore } from "@/context/StoreContext";
+import { api } from "@/lib/api";
 
 const ALLOWED = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -21,6 +22,7 @@ const PrescriptionUploadCard = () => {
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
   const { addPrescription } = useStore();
@@ -50,26 +52,63 @@ const PrescriptionUploadCard = () => {
     if (inputRef.current) inputRef.current.value = "";
   };
 
-  const submit = () => {
+  const submit = async () => {
     if (!picked) return;
+    if (!user) {
+      toast.error("Please sign in to upload a prescription");
+      return;
+    }
     const parsed = noteSchema.safeParse(note);
     if (!parsed.success) {
       setError(parsed.error.issues[0].message);
       return;
     }
-    addPrescription({
-      customerEmail: user?.email ?? "guest@medicare.app",
-      customerName: user?.name ?? "Guest",
-      fileName: picked.file.name,
-      fileType: picked.file.type,
-      fileSize: picked.file.size,
-      previewUrl: picked.previewUrl,
-      note: parsed.data,
-    });
-    setConfirmed(true);
-    toast.success("Prescription received", {
-      description: "A pharmacist will review it within 10 minutes.",
-    });
+    setUploading(true);
+    try {
+      const ext = picked.file.name.split(".").pop() || "file";
+      const upload = await api.createPrescriptionUploadUrl({
+        fileExt: ext,
+        contentType: picked.file.type
+      });
+      const uploadRes = await fetch(upload.signedUrl, {
+        method: "PUT",
+        headers: { "content-type": picked.file.type },
+        body: picked.file
+      });
+      if (!uploadRes.ok) {
+        throw new Error("Upload failed");
+      }
+      const created = await api.createPrescription({
+        path: upload.path,
+        notes: parsed.data,
+        file_name: picked.file.name,
+        file_type: picked.file.type,
+        file_size: picked.file.size,
+        customer_email: user.email,
+        customer_name: user.name
+      });
+      addPrescription({
+        id: created.id,
+        customerEmail: created.customer_email,
+        customerName: created.customer_name,
+        fileName: created.file_name,
+        fileType: created.file_type,
+        fileSize: created.file_size,
+        previewUrl: picked.previewUrl,
+        note: created.notes ?? undefined,
+        status: "Pending",
+        uploadedAt: created.created_at,
+        reviewerNote: created.reviewer_note ?? undefined
+      });
+      setConfirmed(true);
+      toast.success("Prescription received", {
+        description: "A pharmacist will review it within 10 minutes."
+      });
+    } catch (err) {
+      toast.error("Upload failed", { description: "Please try again." });
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -202,10 +241,10 @@ const PrescriptionUploadCard = () => {
 
             <button
               onClick={submit}
-              disabled={!picked}
+              disabled={!picked || uploading}
               className="w-full inline-flex items-center justify-center gap-2 bg-primary-deep text-primary-deep-foreground px-5 py-3 rounded-full text-sm font-semibold hover:scale-[1.01] transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
             >
-              Submit prescription
+              {uploading ? "Uploading..." : "Submit prescription"}
             </button>
           </>
         )}

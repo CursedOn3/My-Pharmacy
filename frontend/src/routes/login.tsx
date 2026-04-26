@@ -27,7 +27,7 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
     const parsed = schema.safeParse({ email, password });
@@ -35,8 +35,12 @@ function LoginPage() {
       setError(parsed.error.issues[0].message);
       return;
     }
-    login(parsed.data.email, parsed.data.password);
-    navigate({ to: "/dashboard" });
+    try {
+      await login(parsed.data.email, parsed.data.password);
+      navigate({ to: "/dashboard" });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed");
+    }
   };
 
   return (
@@ -70,7 +74,7 @@ function LoginPage() {
               Sign in
             </h2>
             <p className="text-sm text-muted-foreground">
-              No account needed — this is a mock login for the demo.
+              Sign in with your Supabase account credentials.
             </p>
           </div>
           <form onSubmit={submit} className="space-y-4">

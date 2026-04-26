@@ -36,7 +36,7 @@ function CheckoutPage() {
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
 
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = async () => {
     if (!user) {
       toast.error("Please sign in to checkout");
       navigate({ to: "/login" });
@@ -52,12 +52,20 @@ function CheckoutPage() {
       return;
     }
 
-    const order = createOrder({
-      customerEmail: user.email,
-      customerName: user.name,
-      lines: items.map((i) => ({ productName: i.name, qty: i.qty })),
-      shipping,
-    });
+    let order = null;
+    try {
+      order = await createOrder({
+        customerEmail: user.email,
+        customerName: user.name,
+        lines: items.map((i) => ({ productName: i.name, qty: i.qty })),
+        shipping,
+      });
+    } catch (err) {
+      toast.error("Checkout failed", {
+        description: "Please try again in a moment.",
+      });
+      return;
+    }
 
     if (!order) {
       toast.error("Some items are out of stock", {

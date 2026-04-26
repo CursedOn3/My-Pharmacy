@@ -13,6 +13,7 @@ import FAQ from "@/components/pharmacy/FAQ";
 import AppDownload from "@/components/pharmacy/AppDownload";
 import Footer from "@/components/pharmacy/Footer";
 import { ALL, baby, todaysDeals, trending } from "@/lib/products";
+import { useStore } from "@/context/StoreContext";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -21,15 +22,23 @@ export const Route = createFileRoute("/")({
 function Index() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All");
+  const { inventory } = useStore();
+
+  const source = inventory.length ? inventory : ALL;
+  const deals = inventory.length ? source.slice(0, 4) : todaysDeals;
+  const hot = inventory.length ? source.slice(4, 8) : trending;
+  const babyList = inventory.length
+    ? source.filter((p) => p.category.toLowerCase().includes("baby")).slice(0, 4)
+    : baby;
 
   const categories = useMemo(
-    () => Array.from(new Set(ALL.map((p) => p.category))),
-    [],
+    () => Array.from(new Set(source.map((p) => p.category))),
+    [source],
   );
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return ALL.filter((p) => {
+    return source.filter((p) => {
       const matchesQ =
         !q ||
         p.name.toLowerCase().includes(q) ||
@@ -38,7 +47,7 @@ function Index() {
       const matchesC = category === "All" || p.category === category;
       return matchesQ && matchesC;
     });
-  }, [query, category]);
+  }, [query, category, source]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -46,15 +55,15 @@ function Index() {
       <main>
         <Hero />
         <Categories />
-        <ProductGrid title="Today's best deals" subtitle="for you!" products={todaysDeals} />
+        <ProductGrid title="Today's best deals" subtitle="for you!" products={deals} />
         <ProductGrid
           title="Trending products"
           subtitle="for you!"
-          products={trending}
+          products={hot}
           tabs={["Babies", "Sun care", "Vitamins", "Hygiene", "Diabetic care", "First aid"]}
         />
         <HealthBanners />
-        <ProductGrid title="Baby Food Collection" products={baby} seeAllSlug="baby" />
+        <ProductGrid title="Baby Food Collection" products={babyList} seeAllSlug="baby" />
         <CerealFeature />
         <Brands />
         <Testimonials />

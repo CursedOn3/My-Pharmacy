@@ -1,9 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import Header from "@/components/pharmacy/Header";
 import Footer from "@/components/pharmacy/Footer";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
+import { useStore } from "@/context/StoreContext";
 import {
   Package,
   FileText,
@@ -66,24 +67,21 @@ function DashboardPage() {
 
 /* ------------------------------- USER ---------------------------------- */
 
-const recentOrders = [
-  { id: "MED-10238", date: "Apr 18, 2026", items: 3, total: "$42.97", status: "Delivered" },
-  { id: "MED-10219", date: "Apr 09, 2026", items: 1, total: "$8.49", status: "Delivered" },
-  { id: "MED-10204", date: "Mar 30, 2026", items: 5, total: "$67.45", status: "Delivered" },
-];
-
-const prescriptions = [
-  { id: "RX-2204", uploaded: "Apr 19, 2026", status: "Approved", note: "Refill ready" },
-  { id: "RX-2187", uploaded: "Apr 02, 2026", status: "Pending", note: "Awaiting pharmacist" },
-];
-
 function UserDashboard() {
   const { count, subtotal } = useCart();
+  const { orders, prescriptions } = useStore();
+
+  const recentOrders = useMemo(() => orders.slice(0, 3), [orders]);
+  const recentRx = useMemo(() => prescriptions.slice(0, 3), [prescriptions]);
+  const activeOrders = useMemo(
+    () => orders.filter((o) => o.status !== "Delivered").length,
+    [orders]
+  );
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard icon={Package} label="Active orders" value="1" bg="bg-mint" />
+        <StatCard icon={Package} label="Active orders" value={String(activeOrders)} bg="bg-mint" />
         <StatCard icon={FileText} label="Prescriptions" value={String(prescriptions.length)} bg="bg-sun" />
         <StatCard icon={ShoppingBag} label="Cart items" value={String(count)} bg="bg-peach" />
         <StatCard icon={CreditCard} label="Cart value" value={`$${subtotal.toFixed(2)}`} bg="bg-rose" />
@@ -101,10 +99,11 @@ function UserDashboard() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-primary-deep">{o.id}</p>
                   <p className="text-xs text-muted-foreground">
-                    {o.date} · {o.items} item{o.items === 1 ? "" : "s"}
+                    {new Date(o.createdAt).toLocaleDateString()} · {o.lines.reduce((s, l) => s + l.qty, 0)} item
+                    {o.lines.reduce((s, l) => s + l.qty, 0) === 1 ? "" : "s"}
                   </p>
                 </div>
-                <span className="text-sm font-bold text-primary-deep">{o.total}</span>
+                <span className="text-sm font-bold text-primary-deep">${o.total.toFixed(2)}</span>
                 <span className="hidden sm:inline-block text-[10px] font-bold uppercase bg-mint text-primary-deep px-2 py-1 rounded-full">
                   {o.status}
                 </span>
@@ -116,7 +115,7 @@ function UserDashboard() {
         <Card>
           <CardHeader title="Prescriptions" cta={<Link to="/prescription" className="text-xs font-bold text-primary-deep">Upload →</Link>} />
           <div className="space-y-2">
-            {prescriptions.map((rx) => (
+            {recentRx.map((rx) => (
               <div
                 key={rx.id}
                 className="rounded-xl border border-border p-3 flex items-start gap-3"
@@ -127,7 +126,7 @@ function UserDashboard() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-primary-deep">{rx.id}</p>
                   <p className="text-xs text-muted-foreground">
-                    {rx.uploaded} · {rx.note}
+                    {new Date(rx.uploadedAt).toLocaleDateString()} · {rx.note ?? "Pending review"}
                   </p>
                 </div>
                 <span
@@ -159,27 +158,36 @@ function UserDashboard() {
 
 /* ------------------------------- ADMIN --------------------------------- */
 
-const adminOrders = [
-  { id: "MED-10301", customer: "Sara M.", total: "$54.20", status: "Pending", time: "5 min ago" },
-  { id: "MED-10300", customer: "Liam K.", total: "$22.99", status: "Processing", time: "12 min ago" },
-  { id: "MED-10299", customer: "Priya R.", total: "$132.45", status: "Shipped", time: "32 min ago" },
-  { id: "MED-10298", customer: "Marcus T.", total: "$8.49", status: "Delivered", time: "1 hr ago" },
-];
-
-const pendingRx = [
-  { id: "RX-3402", customer: "Elena V.", uploaded: "Today, 09:14", urgent: true },
-  { id: "RX-3401", customer: "Hassan B.", uploaded: "Today, 08:47", urgent: false },
-  { id: "RX-3400", customer: "Mia C.", uploaded: "Yesterday", urgent: false },
-];
-
 function AdminDashboard() {
+  const { orders, prescriptions, customers } = useStore();
+
+  const recentOrders = useMemo(() => orders.slice(0, 5), [orders]);
+  const pendingRx = useMemo(
+    () => prescriptions.filter((rx) => rx.status === "Pending").slice(0, 3),
+    [prescriptions]
+  );
+
+  const stats = useMemo(() => {
+    const today = new Date().toDateString();
+    const todayOrders = orders.filter(
+      (o) => new Date(o.createdAt).toDateString() === today
+    );
+    const revenueToday = todayOrders.reduce((s, o) => s + o.total, 0);
+    return {
+      revenueToday,
+      ordersToday: todayOrders.length,
+      pendingRx: prescriptions.filter((rx) => rx.status === "Pending").length,
+      customers: customers.length
+    };
+  }, [orders, prescriptions, customers]);
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard icon={TrendingUp} label="Revenue today" value="$3,420" bg="bg-mint" />
-        <StatCard icon={Package} label="Orders today" value="68" bg="bg-sun" />
-        <StatCard icon={FileText} label="Pending Rx" value="12" bg="bg-peach" />
-        <StatCard icon={Users} label="Customers" value="2,189" bg="bg-rose" />
+        <StatCard icon={TrendingUp} label="Revenue today" value={`$${stats.revenueToday.toFixed(2)}`} bg="bg-mint" />
+        <StatCard icon={Package} label="Orders today" value={String(stats.ordersToday)} bg="bg-sun" />
+        <StatCard icon={FileText} label="Pending Rx" value={String(stats.pendingRx)} bg="bg-peach" />
+        <StatCard icon={Users} label="Customers" value={String(stats.customers)} bg="bg-rose" />
       </div>
 
       <div className="grid lg:grid-cols-3 gap-4">
@@ -200,11 +208,11 @@ function AdminDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {adminOrders.map((o) => (
+                {recentOrders.map((o) => (
                   <tr key={o.id}>
                     <td className="py-3 font-semibold text-primary-deep">{o.id}</td>
-                    <td className="py-3 text-primary-deep/80">{o.customer}</td>
-                    <td className="py-3 font-bold text-primary-deep">{o.total}</td>
+                    <td className="py-3 text-primary-deep/80">{o.customerName}</td>
+                    <td className="py-3 font-bold text-primary-deep">${o.total.toFixed(2)}</td>
                     <td className="py-3">
                       <span
                         className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${statusColor(o.status)}`}
@@ -213,7 +221,7 @@ function AdminDashboard() {
                       </span>
                     </td>
                     <td className="py-3 text-xs text-muted-foreground text-right">
-                      {o.time}
+                      {new Date(o.createdAt).toLocaleTimeString()}
                     </td>
                   </tr>
                 ))}
@@ -232,10 +240,12 @@ function AdminDashboard() {
               >
                 <div
                   className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${
-                    rx.urgent ? "bg-destructive/15" : "bg-sun"
+                    new Date(rx.uploadedAt).getTime() < Date.now() - 1000 * 60 * 60 * 24
+                      ? "bg-destructive/15"
+                      : "bg-sun"
                   }`}
                 >
-                  {rx.urgent ? (
+                  {new Date(rx.uploadedAt).getTime() < Date.now() - 1000 * 60 * 60 * 24 ? (
                     <AlertCircle className="h-4 w-4 text-destructive" />
                   ) : (
                     <Clock className="h-4 w-4 text-primary-deep" />
@@ -244,7 +254,7 @@ function AdminDashboard() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-primary-deep">{rx.id}</p>
                   <p className="text-xs text-muted-foreground">
-                    {rx.customer} · {rx.uploaded}
+                    {rx.customerName} · {new Date(rx.uploadedAt).toLocaleString()}
                   </p>
                 </div>
                 <button className="p-1.5 rounded-full hover:bg-muted" aria-label="Review">
