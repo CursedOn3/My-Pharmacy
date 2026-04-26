@@ -1,7 +1,20 @@
+import { Link } from "@tanstack/react-router";
+
+const pageLinks: Record<string, "/about" | "/contact" | "/favorites" | "/orders" | "/products" | "/wishlist" | "/reorder-favorites"> = {
+  "About Us": "/about",
+  Contact: "/contact",
+  Favorites: "/favorites",
+  Orders: "/orders",
+  Products: "/products",
+  Wishlist: "/wishlist",
+  "Reorder favorites": "/reorder-favorites",
+  "Track order": "/orders",
+};
+
 const cols = [
-  { title: "Shop", links: ["Vitamins", "Medicine", "Wellness", "Beauty", "Devices"] },
-  { title: "Company", links: ["About us", "Careers", "Press", "Partners", "Contact"] },
-  { title: "Support", links: ["Help center", "Track order", "Returns", "FAQ", "Shipping"] },
+  { title: "Shop", links: ["Products", "Vitamins", "Medicine", "Wellness", "Beauty", "Devices"] },
+  { title: "Company", links: ["About Us", "Careers", "Press", "Partners", "Contact"] },
+  { title: "Support", links: ["Favorites", "Wishlist", "Orders", "Reorder favorites", "Help center", "Track order", "Returns", "FAQ", "Shipping"] },
   { title: "Trust & Legal", links: ["Privacy", "Terms", "Pharmacy license", "Cookies", "Accessibility"] },
 ];
 
@@ -15,7 +28,13 @@ const Footer = () => {
             <ul className="space-y-2 text-sm text-muted-foreground">
               {c.links.map((l) => (
                 <li key={l}>
-                  <span className="hover:text-primary-deep cursor-pointer">{l}</span>
+                  {pageLinks[l] ? (
+                    <Link to={pageLinks[l]} className="hover:text-primary-deep">
+                      {l}
+                    </Link>
+                  ) : (
+                    <span className="hover:text-primary-deep cursor-pointer">{l}</span>
+                  )}
                 </li>
               ))}
             </ul>

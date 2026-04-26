@@ -90,7 +90,7 @@ function UserDashboard() {
 
       <div className="grid lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2">
-          <CardHeader title="Recent orders" cta={<Link to="/" className="text-xs font-bold text-primary-deep">View all →</Link>} />
+          <CardHeader title="Recent orders" cta={<Link to="/orders" className="text-xs font-bold text-primary-deep">View all →</Link>} />
           <div className="divide-y divide-border">
             {recentOrders.map((o) => (
               <div key={o.id} className="py-3 flex items-center gap-3">
@@ -148,7 +148,7 @@ function UserDashboard() {
           <div className="grid sm:grid-cols-3 gap-3">
             <QuickAction to="/prescription" icon={FileText} label="Upload prescription" desc="Send a new Rx" bg="bg-mint" />
             <QuickAction to="/cart" icon={ShoppingBag} label="View cart" desc="Continue checkout" bg="bg-sun" />
-            <QuickAction to="/" icon={Heart} label="Reorder favorites" desc="Buy again in 1 click" bg="bg-peach" />
+            <QuickAction to="/reorder-favorites" icon={Heart} label="Reorder favorites" desc="Buy again in 1 click" bg="bg-peach" />
           </div>
         </Card>
       </div>
@@ -348,9 +348,10 @@ function QuickAction({
   bg,
 }: {
   to:
-    | "/"
+    | "/orders"
     | "/cart"
     | "/prescription"
+    | "/reorder-favorites"
     | "/admin/orders"
     | "/admin/prescriptions"
     | "/admin/customers"

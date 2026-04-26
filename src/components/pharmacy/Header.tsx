@@ -109,12 +109,13 @@ const Header = () => {
           </DropdownMenu>
 
           {isCustomer && (
-            <button
+            <Link
+              to="/wishlist"
               className="p-2 rounded-full hover:bg-muted hidden sm:inline-flex"
               aria-label="Wishlist"
             >
               <Heart className="h-5 w-5" />
-            </button>
+            </Link>
           )}
           {isCustomer && (
             <Link
