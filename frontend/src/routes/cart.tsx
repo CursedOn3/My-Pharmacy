@@ -3,7 +3,6 @@ import Header from "@/components/pharmacy/Header";
 import Footer from "@/components/pharmacy/Footer";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
-import { useStore } from "@/context/StoreContext";
 import { Minus, Plus, Trash2, ShoppingBag, ShieldCheck, Truck, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 
@@ -20,7 +19,6 @@ export const Route = createFileRoute("/cart")({
 function CartPage() {
   const { items, setQty, remove, subtotal, clear } = useCart();
   const { user } = useAuth();
-  const { createOrder } = useStore();
   const navigate = useNavigate();
   const shipping = items.length > 0 ? 4.99 : 0;
   const total = subtotal + shipping;
@@ -32,23 +30,7 @@ function CartPage() {
       navigate({ to: "/login" });
       return;
     }
-    const order = createOrder({
-      customerEmail: user.email,
-      customerName: user.name,
-      lines: items.map((i) => ({ productName: i.name, qty: i.qty })),
-      shipping,
-    });
-    if (!order) {
-      toast.error("Some items are out of stock", {
-        description: "Please review your cart.",
-      });
-      return;
-    }
-    clear();
-    toast.success(`Order ${order.id} placed!`, {
-      description: "We'll start preparing it right away.",
-    });
-    navigate({ to: "/dashboard" });
+    navigate({ to: "/checkout" });
   };
 
   return (
