@@ -1,10 +1,13 @@
 import { Link } from "@tanstack/react-router";
-import { Plus, Star } from "lucide-react";
+import { Heart, Plus, Star } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { useFavorites } from "@/context/FavoritesContext";
 import type { Product } from "@/lib/products";
 
 const ProductCard = ({ p }: { p: Product }) => {
   const { open, add } = useCart();
+  const { toggleWishlist, isWished } = useFavorites();
+  const wished = isWished(p.name);
   return (
     <article
       onClick={() => open(p)}
@@ -12,10 +15,24 @@ const ProductCard = ({ p }: { p: Product }) => {
     >
       <div className="relative bg-muted rounded-xl overflow-hidden aspect-square mb-3">
         {p.discount && (
-          <span className="absolute top-2 left-2 bg-accent text-accent-foreground text-[10px] font-bold px-2 py-1 rounded-full">
+          <span className="absolute top-2 left-2 z-10 bg-accent text-accent-foreground text-[10px] font-bold px-2 py-1 rounded-full">
             -{p.discount}
           </span>
         )}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleWishlist(p);
+          }}
+          aria-label={`${wished ? "Remove" : "Add"} ${p.name} ${wished ? "from" : "to"} wishlist`}
+          className={`absolute top-2 right-2 z-10 h-7 w-7 rounded-full flex items-center justify-center shadow-soft transition-colors ${
+            wished
+              ? "bg-accent text-accent-foreground"
+              : "bg-background/90 text-primary-deep hover:bg-mint"
+          }`}
+        >
+          <Heart className={`h-3.5 w-3.5 ${wished ? "fill-current" : ""}`} />
+        </button>
         <img
           src={p.image}
           alt={p.name}
