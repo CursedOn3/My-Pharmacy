@@ -2,6 +2,7 @@ import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/r
 import { CartProvider } from "@/context/CartContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { StoreProvider } from "@/context/StoreContext";
+import { FavoritesProvider } from "@/context/FavoritesContext";
 import { Toaster } from "@/components/ui/sonner";
 import ProductModal from "@/components/pharmacy/ProductModal";
 
@@ -72,11 +73,13 @@ function RootComponent() {
   return (
     <AuthProvider>
       <StoreProvider>
-        <CartProvider>
-          <Outlet />
-          <ProductModal />
-          <Toaster />
-        </CartProvider>
+        <FavoritesProvider>
+          <CartProvider>
+            <Outlet />
+            <ProductModal />
+            <Toaster />
+          </CartProvider>
+        </FavoritesProvider>
       </StoreProvider>
     </AuthProvider>
   );
