@@ -46,6 +46,12 @@ const Header = () => {
         </div>
 
         <nav className="ml-auto flex items-center gap-1">
+          <Link
+            to="/lab-services"
+            className="hidden md:inline-flex items-center gap-1.5 text-xs font-semibold text-primary-deep px-3 py-2 rounded-full hover:bg-muted transition-colors"
+          >
+            Lab Services
+          </Link>
           {user && user.role !== "admin" && (
             <Link
               to="/prescription"
