@@ -14,8 +14,10 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as ReorderFavoritesRouteImport } from './routes/reorder-favorites'
 import { Route as ProductsRouteImport } from './routes/products'
 import { Route as PrescriptionRouteImport } from './routes/prescription'
+import { Route as PhysiotherapyRouteImport } from './routes/physiotherapy'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as LabServicesRouteImport } from './routes/lab-services'
 import { Route as FavoritesRouteImport } from './routes/favorites'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ContactRouteImport } from './routes/contact'
@@ -57,6 +59,11 @@ const PrescriptionRoute = PrescriptionRouteImport.update({
   path: '/prescription',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PhysiotherapyRoute = PhysiotherapyRouteImport.update({
+  id: '/physiotherapy',
+  path: '/physiotherapy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OrdersRoute = OrdersRouteImport.update({
   id: '/orders',
   path: '/orders',
@@ -65,6 +72,11 @@ const OrdersRoute = OrdersRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LabServicesRoute = LabServicesRouteImport.update({
+  id: '/lab-services',
+  path: '/lab-services',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FavoritesRoute = FavoritesRouteImport.update({
@@ -152,8 +164,10 @@ export interface FileRoutesByFullPath {
   '/contact': typeof ContactRoute
   '/dashboard': typeof DashboardRoute
   '/favorites': typeof FavoritesRoute
+  '/lab-services': typeof LabServicesRoute
   '/login': typeof LoginRoute
   '/orders': typeof OrdersRoute
+  '/physiotherapy': typeof PhysiotherapyRoute
   '/prescription': typeof PrescriptionRoute
   '/products': typeof ProductsRoute
   '/reorder-favorites': typeof ReorderFavoritesRoute
@@ -175,8 +189,10 @@ export interface FileRoutesByTo {
   '/contact': typeof ContactRoute
   '/dashboard': typeof DashboardRoute
   '/favorites': typeof FavoritesRoute
+  '/lab-services': typeof LabServicesRoute
   '/login': typeof LoginRoute
   '/orders': typeof OrdersRoute
+  '/physiotherapy': typeof PhysiotherapyRoute
   '/prescription': typeof PrescriptionRoute
   '/products': typeof ProductsRoute
   '/reorder-favorites': typeof ReorderFavoritesRoute
@@ -200,8 +216,10 @@ export interface FileRoutesById {
   '/contact': typeof ContactRoute
   '/dashboard': typeof DashboardRoute
   '/favorites': typeof FavoritesRoute
+  '/lab-services': typeof LabServicesRoute
   '/login': typeof LoginRoute
   '/orders': typeof OrdersRoute
+  '/physiotherapy': typeof PhysiotherapyRoute
   '/prescription': typeof PrescriptionRoute
   '/products': typeof ProductsRoute
   '/reorder-favorites': typeof ReorderFavoritesRoute
@@ -226,8 +244,10 @@ export interface FileRouteTypes {
     | '/contact'
     | '/dashboard'
     | '/favorites'
+    | '/lab-services'
     | '/login'
     | '/orders'
+    | '/physiotherapy'
     | '/prescription'
     | '/products'
     | '/reorder-favorites'
@@ -249,8 +269,10 @@ export interface FileRouteTypes {
     | '/contact'
     | '/dashboard'
     | '/favorites'
+    | '/lab-services'
     | '/login'
     | '/orders'
+    | '/physiotherapy'
     | '/prescription'
     | '/products'
     | '/reorder-favorites'
@@ -273,8 +295,10 @@ export interface FileRouteTypes {
     | '/contact'
     | '/dashboard'
     | '/favorites'
+    | '/lab-services'
     | '/login'
     | '/orders'
+    | '/physiotherapy'
     | '/prescription'
     | '/products'
     | '/reorder-favorites'
@@ -298,8 +322,10 @@ export interface RootRouteChildren {
   ContactRoute: typeof ContactRoute
   DashboardRoute: typeof DashboardRoute
   FavoritesRoute: typeof FavoritesRoute
+  LabServicesRoute: typeof LabServicesRoute
   LoginRoute: typeof LoginRoute
   OrdersRoute: typeof OrdersRoute
+  PhysiotherapyRoute: typeof PhysiotherapyRoute
   PrescriptionRoute: typeof PrescriptionRoute
   ProductsRoute: typeof ProductsRoute
   ReorderFavoritesRoute: typeof ReorderFavoritesRoute
@@ -345,6 +371,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PrescriptionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/physiotherapy': {
+      id: '/physiotherapy'
+      path: '/physiotherapy'
+      fullPath: '/physiotherapy'
+      preLoaderRoute: typeof PhysiotherapyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/orders': {
       id: '/orders'
       path: '/orders'
@@ -357,6 +390,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lab-services': {
+      id: '/lab-services'
+      path: '/lab-services'
+      fullPath: '/lab-services'
+      preLoaderRoute: typeof LabServicesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/favorites': {
@@ -496,8 +536,10 @@ const rootRouteChildren: RootRouteChildren = {
   ContactRoute: ContactRoute,
   DashboardRoute: DashboardRoute,
   FavoritesRoute: FavoritesRoute,
+  LabServicesRoute: LabServicesRoute,
   LoginRoute: LoginRoute,
   OrdersRoute: OrdersRoute,
+  PhysiotherapyRoute: PhysiotherapyRoute,
   PrescriptionRoute: PrescriptionRoute,
   ProductsRoute: ProductsRoute,
   ReorderFavoritesRoute: ReorderFavoritesRoute,
