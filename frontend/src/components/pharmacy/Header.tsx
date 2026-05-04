@@ -52,6 +52,12 @@ const Header = () => {
           >
             Lab Services
           </Link>
+          <Link
+            to="/physiotherapy"
+            className="hidden md:inline-flex items-center gap-1.5 text-xs font-semibold text-primary-deep px-3 py-2 rounded-full hover:bg-muted transition-colors"
+          >
+            Physiotherapy
+          </Link>
           {user && user.role !== "admin" && (
             <Link
               to="/prescription"
