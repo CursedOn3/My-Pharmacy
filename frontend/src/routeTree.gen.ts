@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WishlistRouteImport } from './routes/wishlist'
+import { Route as SignupRouteImport } from './routes/signup'
 import { Route as ReorderFavoritesRouteImport } from './routes/reorder-favorites'
 import { Route as ProductsRouteImport } from './routes/products'
 import { Route as PrescriptionRouteImport } from './routes/prescription'
@@ -34,6 +35,11 @@ import { Route as AdminCustomersRouteImport } from './routes/admin.customers'
 const WishlistRoute = WishlistRouteImport.update({
   id: '/wishlist',
   path: '/wishlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReorderFavoritesRoute = ReorderFavoritesRouteImport.update({
@@ -151,6 +157,7 @@ export interface FileRoutesByFullPath {
   '/prescription': typeof PrescriptionRoute
   '/products': typeof ProductsRoute
   '/reorder-favorites': typeof ReorderFavoritesRoute
+  '/signup': typeof SignupRoute
   '/wishlist': typeof WishlistRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/inventory': typeof AdminInventoryRoute
@@ -173,6 +180,7 @@ export interface FileRoutesByTo {
   '/prescription': typeof PrescriptionRoute
   '/products': typeof ProductsRoute
   '/reorder-favorites': typeof ReorderFavoritesRoute
+  '/signup': typeof SignupRoute
   '/wishlist': typeof WishlistRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/inventory': typeof AdminInventoryRoute
@@ -197,6 +205,7 @@ export interface FileRoutesById {
   '/prescription': typeof PrescriptionRoute
   '/products': typeof ProductsRoute
   '/reorder-favorites': typeof ReorderFavoritesRoute
+  '/signup': typeof SignupRoute
   '/wishlist': typeof WishlistRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/inventory': typeof AdminInventoryRoute
@@ -222,6 +231,7 @@ export interface FileRouteTypes {
     | '/prescription'
     | '/products'
     | '/reorder-favorites'
+    | '/signup'
     | '/wishlist'
     | '/admin/customers'
     | '/admin/inventory'
@@ -244,6 +254,7 @@ export interface FileRouteTypes {
     | '/prescription'
     | '/products'
     | '/reorder-favorites'
+    | '/signup'
     | '/wishlist'
     | '/admin/customers'
     | '/admin/inventory'
@@ -267,6 +278,7 @@ export interface FileRouteTypes {
     | '/prescription'
     | '/products'
     | '/reorder-favorites'
+    | '/signup'
     | '/wishlist'
     | '/admin/customers'
     | '/admin/inventory'
@@ -291,6 +303,7 @@ export interface RootRouteChildren {
   PrescriptionRoute: typeof PrescriptionRoute
   ProductsRoute: typeof ProductsRoute
   ReorderFavoritesRoute: typeof ReorderFavoritesRoute
+  SignupRoute: typeof SignupRoute
   WishlistRoute: typeof WishlistRoute
   CategorySlugRoute: typeof CategorySlugRoute
 }
@@ -302,6 +315,13 @@ declare module '@tanstack/react-router' {
       path: '/wishlist'
       fullPath: '/wishlist'
       preLoaderRoute: typeof WishlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reorder-favorites': {
@@ -481,6 +501,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrescriptionRoute: PrescriptionRoute,
   ProductsRoute: ProductsRoute,
   ReorderFavoritesRoute: ReorderFavoritesRoute,
+  SignupRoute: SignupRoute,
   WishlistRoute: WishlistRoute,
   CategorySlugRoute: CategorySlugRoute,
 }
