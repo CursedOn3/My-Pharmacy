@@ -71,6 +71,7 @@ type StoreCtx = {
   customers: Customer[];
   prescriptions: Prescription[];
   loading: boolean;
+  refreshOrders: () => Promise<void>;
 
   // inventory
   addProduct: (p: Omit<InventoryItem, "id">) => Promise<InventoryItem>;
@@ -239,6 +240,35 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [loadInventory, loadOrders, loadPrescriptions]);
 
+  useEffect(() => {
+    if (!user || user.role !== "admin") return;
+
+    void loadOrders();
+
+    const intervalId = window.setInterval(() => {
+      void loadOrders();
+    }, 10000);
+
+    const onFocus = () => {
+      void loadOrders();
+    };
+
+    const onVisibilityChange = () => {
+      if (!document.hidden) {
+        void loadOrders();
+      }
+    };
+
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [loadOrders, user]);
+
   /* ----------------------------- inventory ---------------------------- */
 
   const addProduct: StoreCtx["addProduct"] = useCallback(async (p) => {
@@ -370,13 +400,22 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
 
   const customers = useMemo<Customer[]>(() => {
     const map = new Map<string, Customer>();
+
     for (const order of orders) {
       const email = order.customerEmail.toLowerCase();
       const existing = map.get(email);
       if (existing) {
         existing.totalOrders += 1;
         existing.totalSpent += order.total;
-        existing.lastOrderAt = order.createdAt;
+        if (new Date(order.createdAt).getTime() < new Date(existing.joinedAt).getTime()) {
+          existing.joinedAt = order.createdAt;
+        }
+        if (
+          !existing.lastOrderAt ||
+          new Date(order.createdAt).getTime() > new Date(existing.lastOrderAt).getTime()
+        ) {
+          existing.lastOrderAt = order.createdAt;
+        }
       } else {
         map.set(email, {
           email: order.customerEmail,
@@ -388,8 +427,31 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         });
       }
     }
-    return Array.from(map.values());
-  }, [orders]);
+
+    for (const prescription of prescriptions) {
+      const email = prescription.customerEmail.toLowerCase();
+      const existing = map.get(email);
+      if (existing) {
+        if (new Date(prescription.uploadedAt).getTime() < new Date(existing.joinedAt).getTime()) {
+          existing.joinedAt = prescription.uploadedAt;
+        }
+      } else {
+        map.set(email, {
+          email: prescription.customerEmail,
+          name:
+            prescription.customerName ||
+            prescription.customerEmail.split("@")[0],
+          joinedAt: prescription.uploadedAt,
+          totalOrders: 0,
+          totalSpent: 0
+        });
+      }
+    }
+
+    return Array.from(map.values()).sort(
+      (a, b) => new Date(b.joinedAt).getTime() - new Date(a.joinedAt).getTime()
+    );
+  }, [orders, prescriptions]);
 
   const value = useMemo<StoreCtx>(
     () => ({
@@ -398,6 +460,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       customers,
       prescriptions,
       loading,
+      refreshOrders: loadOrders,
       addProduct,
       updateProduct,
       deleteProduct,
@@ -413,6 +476,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       customers,
       prescriptions,
       loading,
+      loadOrders,
       addProduct,
       updateProduct,
       deleteProduct,

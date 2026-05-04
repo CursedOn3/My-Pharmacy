@@ -108,7 +108,7 @@ function LoginPage() {
           </form>
           <p className="text-xs text-muted-foreground text-center mt-6">
             New here?{" "}
-            <Link to="/login" className="font-semibold text-primary-deep">
+            <Link to="/signup" className="font-semibold text-primary-deep">
               Create account
             </Link>
           </p>
