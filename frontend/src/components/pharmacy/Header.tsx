@@ -100,7 +100,7 @@ const Header = () => {
                   <DropdownMenuItem onClick={() => navigate({ to: "/login" })}>
                     Sign in
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate({ to: "/login" })}>
+                  <DropdownMenuItem onClick={() => navigate({ to: "/signup" })}>
                     Create account
                   </DropdownMenuItem>
                 </>

@@ -105,6 +105,13 @@ const apiFetch = async <T>(
 };
 
 export const api = {
+  async signup(input: { name: string; email: string; password: string }) {
+    const res = await apiFetch<ApiResponse<{ id: string; email: string }>>("/auth/signup", {
+      method: "POST",
+      body: JSON.stringify(input)
+    });
+    return res.data;
+  },
   async listProducts() {
     const res = await apiFetch<ApiResponse<ProductDto[]>>("/products");
     return res.data;

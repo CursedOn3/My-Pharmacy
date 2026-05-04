@@ -81,7 +81,7 @@ function AdminCustomersPage() {
               No customers yet
             </p>
             <p className="text-sm text-muted-foreground mt-1">
-              Customers are created automatically when an order is placed.
+              Customers appear automatically when an order is placed or a prescription is uploaded.
             </p>
           </div>
         ) : (
