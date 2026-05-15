@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -98,7 +99,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
-  const login: AuthCtx["login"] = async (email, password) => {
+  const login: AuthCtx["login"] = useCallback(async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password
@@ -117,14 +118,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
     setUser(next);
     return next;
-  };
+  }, []);
 
-  const logout: AuthCtx["logout"] = async () => {
+  const logout: AuthCtx["logout"] = useCallback(async () => {
     await supabase.auth.signOut();
     setUser(null);
-  };
+  }, []);
 
-  const value = useMemo(() => ({ user, loading, login, logout }), [user, loading]);
+  const value = useMemo(
+    () => ({ user, loading, login, logout }),
+    [user, loading, login, logout]
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

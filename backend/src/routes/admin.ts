@@ -74,7 +74,11 @@ router.patch("/prescriptions/:id", async (req, res, next) => {
 
     const { data, error } = await serviceClient
       .from("prescriptions")
-      .update({ status: payload.status, reviewer_note: payload.reviewer_note ?? null })
+      .update({
+        status: payload.status,
+        reviewer_note: payload.reviewer_note ?? null,
+        reviewed_at: new Date().toISOString()
+      })
       .eq("id", id)
       .select("*")
       .single();
