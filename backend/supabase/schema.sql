@@ -30,6 +30,7 @@ create table if not exists public.orders (
   user_id uuid not null references auth.users(id) on delete cascade,
   customer_email text not null,
   customer_name text not null,
+  -- items shape: [{ product_id, quantity, unit_price }]
   items jsonb not null,
   notes text,
   status text not null default 'pending',
@@ -47,6 +48,7 @@ create table if not exists public.prescriptions (
   file_size int not null,
   notes text,
   reviewer_note text,
+  reviewed_at timestamptz,
   status text not null default 'pending',
   created_at timestamptz not null default now()
 );
@@ -82,6 +84,10 @@ create table if not exists public.marketing_banners (
   active boolean not null default true,
   created_at timestamptz not null default now()
 );
+
+-- Migration: add reviewed_at to prescriptions (safe to run on existing DBs)
+alter table public.prescriptions
+  add column if not exists reviewed_at timestamptz;
 
 alter table public.products enable row level security;
 alter table public.cart_items enable row level security;

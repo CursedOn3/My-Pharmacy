@@ -15,7 +15,7 @@ router.post("/upload-url", requireAuth, async (req, res, next) => {
   try {
     const payload = uploadSchema.parse(req.body);
     const fileId = randomUUID();
-    const path = `${req.user?.id}/${fileId}.${payload.fileExt}`;
+    const path = `${req.user!.id}/${fileId}.${payload.fileExt}`;
 
     const { data, error } = await serviceClient.storage
       .from("prescriptions")
@@ -66,7 +66,7 @@ router.post("/", requireAuth, async (req, res, next) => {
     const { data, error } = await serviceClient
       .from("prescriptions")
       .insert({
-        user_id: req.user?.id,
+        user_id: req.user!.id,
         customer_email: payload.customer_email,
         customer_name: payload.customer_name,
         file_path: payload.path,

@@ -21,7 +21,7 @@ type OrderDto = {
   user_id: string;
   customer_email: string;
   customer_name: string;
-  items: { product_id: string; quantity: number }[];
+  items: { product_id: string; quantity: number; unit_price: number }[];
   notes: string | null;
   status: string;
   created_at: string;
@@ -38,6 +38,7 @@ type PrescriptionDto = {
   file_size: number;
   notes: string | null;
   reviewer_note: string | null;
+  reviewed_at: string | null;
   status: string;
   created_at: string;
 };

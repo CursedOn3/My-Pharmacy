@@ -154,12 +154,20 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     (dto: OrderDto): Order => {
       const lines = dto.items.map((line) => {
         const product = inventoryById.get(line.product_id);
+        // Prefer the unit_price captured at order creation time; fall back to
+        // live inventory price only for legacy rows that predate this fix.
+        const unitPrice =
+          line.unit_price != null && line.unit_price > 0
+            ? line.unit_price
+            : product
+              ? parsePrice(product.price)
+              : 0;
         return {
           productId: line.product_id,
           name: product?.name ?? "Unknown item",
           image: product?.image ?? "",
           qty: line.quantity,
-          unitPrice: product ? parsePrice(product.price) : 0
+          unitPrice
         };
       });
       const subtotal = lines.reduce((s, l) => s + l.unitPrice * l.qty, 0);
@@ -191,7 +199,9 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       note: dto.notes ?? undefined,
       status: toTitle(dto.status) as PrescriptionStatus,
       uploadedAt: dto.created_at,
-      reviewedAt: dto.reviewer_note ? new Date().toISOString() : undefined,
+      // Use the real reviewed_at timestamp stored by the backend, not the
+      // current time which was incorrect on every page load.
+      reviewedAt: dto.reviewed_at ?? undefined,
       reviewerNote: dto.reviewer_note ?? undefined
     };
   }, []);
