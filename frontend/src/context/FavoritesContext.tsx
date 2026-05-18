@@ -11,6 +11,7 @@ import {
 import { toast } from "sonner";
 import type { Product } from "@/lib/products";
 import { ALL } from "@/lib/products";
+import { toPrice } from "@/lib/utils";
 import { api, type FavoriteRow, type ProductDto } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useStore } from "@/context/StoreContext";
@@ -31,9 +32,10 @@ type FavoritesCtx = {
 
 const FavoritesContext = createContext<FavoritesCtx | null>(null);
 
+// Guest storage keys — now store product IDs, not names
 const STORAGE = {
-  favorites: "medicare.favorites.guest.v1",
-  wishlist: "medicare.wishlist.guest.v1"
+  favorites: "medicare.favorites.guest.v2",
+  wishlist: "medicare.wishlist.guest.v2"
 } as const;
 
 const safeRead = <T,>(key: string, fallback: T): T => {
@@ -54,8 +56,6 @@ const safeWrite = (key: string, value: unknown) => {
     // ignore quota errors
   }
 };
-
-const toPrice = (value: number) => `$${value.toFixed(2)}`;
 
 const mapProduct = (
   dto: ProductDto | null,
@@ -89,10 +89,14 @@ const mapRows = (rows: FavoriteRow[], inventory: Product[]) => {
     .filter(Boolean) as Product[];
 };
 
-const mapNamesToProducts = (names: string[], inventory: Product[]) => {
+// Resolve guest products by ID (v2 storage) — stable even if names change
+const mapIdsToProducts = (ids: string[], inventory: Product[]) => {
   const base = inventory.length ? inventory : ALL;
-  const byName = new Map(base.map((p) => [p.name, p]));
-  return names.map((name) => byName.get(name)).filter(Boolean) as Product[];
+  const entries: [string, Product][] = base
+    .filter((p): p is Product & { id: string } => !!p.id)
+    .map((p) => [p.id as string, p]);
+  const byId = new Map<string, Product>(entries);
+  return ids.map((id) => byId.get(id)).filter(Boolean) as Product[];
 };
 
 export const FavoritesProvider = ({ children }: { children: ReactNode }) => {
@@ -100,31 +104,40 @@ export const FavoritesProvider = ({ children }: { children: ReactNode }) => {
   const { inventory } = useStore();
   const [favorites, setFavorites] = useState<Product[]>([]);
   const [wishlist, setWishlist] = useState<Product[]>([]);
+  // Tracks whether we've already synced guest data to the account in this session
   const syncedRef = useRef(false);
+  // Tracks the last user ID that triggered an API load to avoid re-running
+  // when only inventory changes (inventory-dependent guest resolution is separate)
+  const loadedUserRef = useRef<string | null>(null);
 
+  // Effect 1 — Guest-only: Re-resolve stored IDs → Product objects when inventory loads.
+  // This does NOT call any API and runs whenever inventory refreshes.
   useEffect(() => {
+    if (user) return; // authenticated users are handled by Effect 2
+    const favIds = safeRead<string[]>(STORAGE.favorites, []);
+    const wishIds = safeRead<string[]>(STORAGE.wishlist, []);
+    setFavorites(mapIdsToProducts(favIds, inventory));
+    setWishlist(mapIdsToProducts(wishIds, inventory));
+  }, [inventory, user]);
+
+  // Effect 2 — Authenticated: Sync guest items on login, then load from API.
+  // Only re-runs when the logged-in user changes, NOT on every inventory update.
+  useEffect(() => {
+    if (!user) {
+      // User logged out — reset
+      syncedRef.current = false;
+      loadedUserRef.current = null;
+      return;
+    }
+    if (loadedUserRef.current === user.id) return;
+    loadedUserRef.current = user.id;
+
     let active = true;
 
-    const loadGuest = () => {
-      const favNames = safeRead<string[]>(STORAGE.favorites, []);
-      const wishNames = safeRead<string[]>(STORAGE.wishlist, []);
-      setFavorites(mapNamesToProducts(favNames, inventory));
-      setWishlist(mapNamesToProducts(wishNames, inventory));
-    };
-
     const syncGuestToAccount = async () => {
-      const favNames = safeRead<string[]>(STORAGE.favorites, []);
-      const wishNames = safeRead<string[]>(STORAGE.wishlist, []);
-      if (favNames.length === 0 && wishNames.length === 0) return;
-
-      const base = inventory.length ? inventory : ALL;
-      const byName = new Map(base.map((p) => [p.name, p]));
-      const favIds = favNames
-        .map((name) => byName.get(name)?.id)
-        .filter(Boolean) as string[];
-      const wishIds = wishNames
-        .map((name) => byName.get(name)?.id)
-        .filter(Boolean) as string[];
+      const favIds = safeRead<string[]>(STORAGE.favorites, []);
+      const wishIds = safeRead<string[]>(STORAGE.wishlist, []);
+      if (favIds.length === 0 && wishIds.length === 0) return;
 
       await Promise.all([
         ...favIds.map((id) => api.addFavorite(id)),
@@ -136,12 +149,6 @@ export const FavoritesProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const load = async () => {
-      if (!user) {
-        syncedRef.current = false;
-        loadGuest();
-        return;
-      }
-
       try {
         if (!syncedRef.current) {
           await syncGuestToAccount();
@@ -163,7 +170,10 @@ export const FavoritesProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       active = false;
     };
-  }, [inventory, user]);
+    // Intentionally NOT including `inventory` — stale inventory is acceptable
+    // here; the guest effect above keeps guest lists up-to-date.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const has = (list: Product[], name: string) =>
     list.some((p) => p.name === name);
@@ -192,13 +202,14 @@ export const FavoritesProvider = ({ children }: { children: ReactNode }) => {
         if (has(list, p.name)) {
           const next = list.filter((i) => i.name !== p.name);
           setter(next);
-          safeWrite(storageKey, next.map((i) => i.name));
+          // Store IDs — stable against product renames
+          safeWrite(storageKey, next.map((i) => i.id).filter(Boolean));
           toast.message(`Removed from ${label}`, { description: p.name });
           return;
         }
         const next = [p, ...list];
         setter(next);
-        safeWrite(storageKey, next.map((i) => i.name));
+        safeWrite(storageKey, next.map((i) => i.id).filter(Boolean));
         toast.success(`Added to ${label}`, { description: p.name });
         return;
       }
@@ -239,7 +250,7 @@ export const FavoritesProvider = ({ children }: { children: ReactNode }) => {
       if (!user) {
         const next = favorites.filter((i) => i.name !== name);
         setFavorites(next);
-        safeWrite(STORAGE.favorites, next.map((i) => i.name));
+        safeWrite(STORAGE.favorites, next.map((i) => i.id).filter(Boolean));
         return;
       }
       const target = favorites.find((p) => p.name === name);
@@ -261,7 +272,7 @@ export const FavoritesProvider = ({ children }: { children: ReactNode }) => {
       if (!user) {
         const next = wishlist.filter((i) => i.name !== name);
         setWishlist(next);
-        safeWrite(STORAGE.wishlist, next.map((i) => i.name));
+        safeWrite(STORAGE.wishlist, next.map((i) => i.id).filter(Boolean));
         return;
       }
       const target = wishlist.find((p) => p.name === name);
@@ -287,8 +298,8 @@ export const FavoritesProvider = ({ children }: { children: ReactNode }) => {
         const nextWish = wishlist.filter((i) => i.name !== name);
         setFavorites(nextFavs);
         setWishlist(nextWish);
-        safeWrite(STORAGE.favorites, nextFavs.map((i) => i.name));
-        safeWrite(STORAGE.wishlist, nextWish.map((i) => i.name));
+        safeWrite(STORAGE.favorites, nextFavs.map((i) => i.id).filter(Boolean));
+        safeWrite(STORAGE.wishlist, nextWish.map((i) => i.id).filter(Boolean));
         toast.success("Moved to Favorites", { description: name });
         return;
       }

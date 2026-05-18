@@ -4,11 +4,13 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 import { ALL, CATEGORIES, type Product } from "@/lib/products";
 import { api, type OrderDto, type PrescriptionDto, type ProductDto } from "@/lib/api";
+import { parsePrice, toPrice } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 
 /* ================================ TYPES ================================ */
@@ -67,6 +69,7 @@ export type Prescription = {
 
 type StoreCtx = {
   inventory: InventoryItem[];
+  inventoryByName: Map<string, InventoryItem>;
   orders: Order[];
   customers: Customer[];
   prescriptions: Prescription[];
@@ -100,14 +103,6 @@ const StoreContext = createContext<StoreCtx | null>(null);
 
 /* =============================== HELPERS =============================== */
 
-const parsePrice = (price: string) =>
-  Number(String(price).replace(/[^0-9.]/g, "")) || 0;
-
-const toPrice = (value: number) => `$${value.toFixed(2)}`;
-
-const toTitle = (value: string) =>
-  value ? value.charAt(0).toUpperCase() + value.slice(1) : value;
-
 const mapCategorySlug = (slug: string | null) => {
   if (!slug) return "General";
   const match = CATEGORIES.find((c) => c.slug === slug);
@@ -133,6 +128,34 @@ const fromDto = (dto: ProductDto): InventoryItem => {
   };
 };
 
+/**
+ * Safely maps a raw DB status string to a typed OrderStatus.
+ * Unknown values fall back to "Pending".
+ */
+const toOrderStatus = (raw: string): OrderStatus => {
+  const map: Record<string, OrderStatus> = {
+    pending: "Pending",
+    processing: "Processing",
+    shipped: "Shipped",
+    delivered: "Delivered",
+    cancelled: "Cancelled",
+  };
+  return map[raw?.toLowerCase()] ?? "Pending";
+};
+
+/**
+ * Safely maps a raw DB status string to a typed PrescriptionStatus.
+ * Unknown values fall back to "Pending".
+ */
+const toPrescriptionStatus = (raw: string): PrescriptionStatus => {
+  const map: Record<string, PrescriptionStatus> = {
+    pending: "Pending",
+    approved: "Approved",
+    rejected: "Rejected",
+  };
+  return map[raw?.toLowerCase()] ?? "Pending";
+};
+
 /* ============================== PROVIDER =============================== */
 
 export const StoreProvider = ({ children }: { children: ReactNode }) => {
@@ -142,20 +165,20 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
-  const inventoryById = useMemo(() => {
-    return new Map(inventory.map((i) => [i.id, i]));
-  }, [inventory]);
+  const inventoryById = useMemo(
+    () => new Map(inventory.map((i) => [i.id, i])),
+    [inventory]
+  );
 
-  const inventoryByName = useMemo(() => {
-    return new Map(inventory.map((i) => [i.name, i]));
-  }, [inventory]);
+  const inventoryByName = useMemo(
+    () => new Map(inventory.map((i) => [i.name, i])),
+    [inventory]
+  );
 
   const mapOrder = useCallback(
     (dto: OrderDto): Order => {
       const lines = dto.items.map((line) => {
         const product = inventoryById.get(line.product_id);
-        // Prefer the unit_price captured at order creation time; fall back to
-        // live inventory price only for legacy rows that predate this fix.
         const unitPrice =
           line.unit_price != null && line.unit_price > 0
             ? line.unit_price
@@ -180,7 +203,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         subtotal,
         shipping,
         total: subtotal + shipping,
-        status: toTitle(dto.status) as OrderStatus,
+        status: toOrderStatus(dto.status),
         createdAt: dto.created_at
       };
     },
@@ -197,10 +220,8 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       fileSize: dto.file_size,
       previewUrl: null,
       note: dto.notes ?? undefined,
-      status: toTitle(dto.status) as PrescriptionStatus,
+      status: toPrescriptionStatus(dto.status),
       uploadedAt: dto.created_at,
-      // Use the real reviewed_at timestamp stored by the backend, not the
-      // current time which was incorrect on every page load.
       reviewedAt: dto.reviewed_at ?? undefined,
       reviewerNote: dto.reviewer_note ?? undefined
     };
@@ -232,14 +253,12 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     setPrescriptions(data.map(mapPrescription));
   }, [mapPrescription, user]);
 
+  // Initial load — all three fetches run in parallel
   useEffect(() => {
     let active = true;
     const loadAll = async () => {
       try {
-        await loadInventory();
-        if (active) {
-          await Promise.all([loadOrders(), loadPrescriptions()]);
-        }
+        await Promise.all([loadInventory(), loadOrders(), loadPrescriptions()]);
       } finally {
         if (active) setLoading(false);
       }
@@ -250,32 +269,34 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [loadInventory, loadOrders, loadPrescriptions]);
 
+  // Admin polling — debounced with a 500 ms guard and proper cleanup
+  const pollingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingPollRef = useRef(false);
+
   useEffect(() => {
     if (!user || user.role !== "admin") return;
 
-    void loadOrders();
-
-    const intervalId = window.setInterval(() => {
-      void loadOrders();
-    }, 10000);
-
-    const onFocus = () => {
-      void loadOrders();
-    };
-
-    const onVisibilityChange = () => {
-      if (!document.hidden) {
+    const debouncedLoad = () => {
+      if (pendingPollRef.current) return;
+      pendingPollRef.current = true;
+      if (pollingTimerRef.current) clearTimeout(pollingTimerRef.current);
+      pollingTimerRef.current = setTimeout(() => {
+        pendingPollRef.current = false;
         void loadOrders();
-      }
+      }, 500);
     };
 
-    window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", onVisibilityChange);
+    const intervalId = window.setInterval(debouncedLoad, 10_000);
+
+    window.addEventListener("focus", debouncedLoad);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) debouncedLoad();
+    });
 
     return () => {
       window.clearInterval(intervalId);
-      window.removeEventListener("focus", onFocus);
-      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("focus", debouncedLoad);
+      if (pollingTimerRef.current) clearTimeout(pollingTimerRef.current);
     };
   }, [loadOrders, user]);
 
@@ -318,14 +339,13 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     setInventory((prev) => prev.filter((i) => i.id !== id));
   }, []);
 
+  // O(1) lookup using the memoised Maps instead of linear array scans
   const getStock: StoreCtx["getStock"] = useCallback(
     (idOrName) => {
-      const item =
-        inventory.find((i) => i.id === idOrName) ??
-        inventory.find((i) => i.name === idOrName);
+      const item = inventoryById.get(idOrName) ?? inventoryByName.get(idOrName);
       return item?.stock ?? 0;
     },
-    [inventory]
+    [inventoryById, inventoryByName]
   );
 
   /* ------------------------------ orders ------------------------------ */
@@ -389,8 +409,12 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
 
   const updatePrescription: StoreCtx["updatePrescription"] = useCallback(
     async (id, patch) => {
+      // Only send status if explicitly provided — never default to "Pending"
+      if (!patch.status) {
+        throw new Error("updatePrescription requires an explicit status");
+      }
       await api.adminUpdatePrescription(id, {
-        status: patch.status ?? "Pending",
+        status: patch.status,
         reviewer_note: patch.reviewerNote
       });
       setPrescriptions((prev) =>
@@ -408,24 +432,21 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     []
   );
 
+  // Pre-compute timestamps once per order/prescription to avoid repeated new Date() in comparisons
   const customers = useMemo<Customer[]>(() => {
     const map = new Map<string, Customer>();
 
     for (const order of orders) {
       const email = order.customerEmail.toLowerCase();
+      const orderTs = new Date(order.createdAt).getTime();
       const existing = map.get(email);
       if (existing) {
         existing.totalOrders += 1;
         existing.totalSpent += order.total;
-        if (new Date(order.createdAt).getTime() < new Date(existing.joinedAt).getTime()) {
-          existing.joinedAt = order.createdAt;
-        }
-        if (
-          !existing.lastOrderAt ||
-          new Date(order.createdAt).getTime() > new Date(existing.lastOrderAt).getTime()
-        ) {
-          existing.lastOrderAt = order.createdAt;
-        }
+        const joinTs = new Date(existing.joinedAt).getTime();
+        if (orderTs < joinTs) existing.joinedAt = order.createdAt;
+        const lastTs = existing.lastOrderAt ? new Date(existing.lastOrderAt).getTime() : -Infinity;
+        if (orderTs > lastTs) existing.lastOrderAt = order.createdAt;
       } else {
         map.set(email, {
           email: order.customerEmail,
@@ -440,11 +461,11 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
 
     for (const prescription of prescriptions) {
       const email = prescription.customerEmail.toLowerCase();
+      const rxTs = new Date(prescription.uploadedAt).getTime();
       const existing = map.get(email);
       if (existing) {
-        if (new Date(prescription.uploadedAt).getTime() < new Date(existing.joinedAt).getTime()) {
-          existing.joinedAt = prescription.uploadedAt;
-        }
+        const joinTs = new Date(existing.joinedAt).getTime();
+        if (rxTs < joinTs) existing.joinedAt = prescription.uploadedAt;
       } else {
         map.set(email, {
           email: prescription.customerEmail,
@@ -466,6 +487,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const value = useMemo<StoreCtx>(
     () => ({
       inventory,
+      inventoryByName,
       orders,
       customers,
       prescriptions,
@@ -482,6 +504,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     }),
     [
       inventory,
+      inventoryByName,
       orders,
       customers,
       prescriptions,

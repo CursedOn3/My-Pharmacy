@@ -7,11 +7,14 @@ const router = Router();
 
 router.use(requireAuth, requireAdmin);
 
+const ORDER_STATUS = z.enum(["pending", "processing", "shipped", "delivered", "cancelled"]);
+const PRESCRIPTION_STATUS = z.enum(["pending", "approved", "rejected"]);
+
 router.get("/orders", async (_req, res, next) => {
   try {
     const { data, error } = await serviceClient
       .from("orders")
-      .select("*")
+      .select("id,user_id,customer_email,customer_name,items,notes,status,created_at")
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -28,7 +31,7 @@ router.patch("/orders/:id", async (req, res, next) => {
   try {
     const { id } = z.object({ id: z.string().min(1) }).parse(req.params);
     const { status } = z
-      .object({ status: z.string().min(1) })
+      .object({ status: ORDER_STATUS })
       .parse(req.body);
 
     const { data, error } = await serviceClient
@@ -52,7 +55,7 @@ router.get("/prescriptions", async (_req, res, next) => {
   try {
     const { data, error } = await serviceClient
       .from("prescriptions")
-      .select("*")
+      .select("id,user_id,customer_email,customer_name,file_path,file_name,file_type,file_size,notes,reviewer_note,reviewed_at,status,created_at")
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -69,7 +72,7 @@ router.patch("/prescriptions/:id", async (req, res, next) => {
   try {
     const { id } = z.object({ id: z.string().min(1) }).parse(req.params);
     const payload = z
-      .object({ status: z.string().min(1), reviewer_note: z.string().optional() })
+      .object({ status: PRESCRIPTION_STATUS, reviewer_note: z.string().optional() })
       .parse(req.body);
 
     const { data, error } = await serviceClient
@@ -97,7 +100,7 @@ router.get("/products", async (_req, res, next) => {
   try {
     const { data, error } = await serviceClient
       .from("products")
-      .select("*")
+      .select("id,name,price,image_url,category_slug,stock,created_at")
       .order("created_at", { ascending: false });
 
     if (error) {

@@ -133,10 +133,11 @@ function SignupPage() {
           </div>
           <form onSubmit={submit} className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-primary-deep">
+              <label htmlFor="signup-name" className="text-xs font-semibold text-primary-deep">
                 Full name
               </label>
               <input
+                id="signup-name"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -146,8 +147,9 @@ function SignupPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-primary-deep">Email</label>
+              <label htmlFor="signup-email" className="text-xs font-semibold text-primary-deep">Email</label>
               <input
+                id="signup-email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -158,10 +160,11 @@ function SignupPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-primary-deep">
+                <label htmlFor="signup-password" className="text-xs font-semibold text-primary-deep">
                   Password
                 </label>
                 <input
+                  id="signup-password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -171,10 +174,11 @@ function SignupPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-primary-deep">
+                <label htmlFor="signup-confirm" className="text-xs font-semibold text-primary-deep">
                   Confirm
                 </label>
                 <input
+                  id="signup-confirm"
                   type="password"
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
@@ -184,8 +188,9 @@ function SignupPage() {
                 />
               </div>
             </div>
-            <label className="flex items-start gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+            <label htmlFor="signup-agree" className="flex items-start gap-2 text-xs text-muted-foreground cursor-pointer select-none">
               <input
+                id="signup-agree"
                 type="checkbox"
                 checked={agree}
                 onChange={(e) => setAgree(e.target.checked)}

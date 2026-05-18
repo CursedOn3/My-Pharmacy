@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -32,18 +33,47 @@ const fallbackName = (email: string) => {
   return pretty.charAt(0).toUpperCase() + pretty.slice(1);
 };
 
-const loadRole = async (userId: string): Promise<Role> => {
+/**
+ * Loads the user's role from Supabase app_metadata first (zero extra DB call),
+ * then falls back to the profiles table for backward compatibility.
+ */
+const resolveRole = async (supabaseUser: { id: string; app_metadata?: Record<string, unknown> }): Promise<Role> => {
+  const metaRole = supabaseUser.app_metadata?.role as string | undefined;
+  if (metaRole === "admin" || metaRole === "user") return metaRole;
+
   const { data } = await supabase
     .from("profiles")
     .select("role")
-    .eq("id", userId)
+    .eq("id", supabaseUser.id)
     .single();
   return (data?.role as Role) ?? "user";
+};
+
+const buildAuthUser = async (
+  supabaseUser: {
+    id: string;
+    email?: string;
+    user_metadata?: Record<string, unknown>;
+    app_metadata?: Record<string, unknown>;
+  }
+): Promise<AuthUser> => {
+  const role = await resolveRole(supabaseUser);
+  return {
+    id: supabaseUser.id,
+    email: supabaseUser.email ?? "",
+    name:
+      (supabaseUser.user_metadata?.full_name as string | undefined) ??
+      fallbackName(supabaseUser.email ?? ""),
+    role,
+  };
 };
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  // Tracks the last user ID we've built an AuthUser for to avoid duplicate
+  // resolveRole calls when both syncSession and onAuthStateChange fire on mount.
+  const resolvedIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -58,16 +88,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
         return;
       }
-      const role = await loadRole(sessionUser.id);
+      // Mark this ID so the onAuthStateChange listener skips a duplicate call
+      resolvedIdRef.current = sessionUser.id;
+      const authUser = await buildAuthUser(sessionUser);
       if (active) {
-        setUser({
-          id: sessionUser.id,
-          email: sessionUser.email ?? "",
-          name:
-            (sessionUser.user_metadata?.full_name as string | undefined) ??
-            fallbackName(sessionUser.email ?? ""),
-          role
-        });
+        setUser(authUser);
         setLoading(false);
       }
     };
@@ -77,19 +102,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
       const sessionUser = session?.user ?? null;
       if (!sessionUser) {
+        resolvedIdRef.current = null;
         setUser(null);
         setLoading(false);
         return;
       }
-      const role = await loadRole(sessionUser.id);
-      setUser({
-        id: sessionUser.id,
-        email: sessionUser.email ?? "",
-        name:
-          (sessionUser.user_metadata?.full_name as string | undefined) ??
-          fallbackName(sessionUser.email ?? ""),
-        role
-      });
+      // Skip if syncSession already resolved this exact session user
+      if (resolvedIdRef.current === sessionUser.id) return;
+      resolvedIdRef.current = sessionUser.id;
+      const authUser = await buildAuthUser(sessionUser);
+      setUser(authUser);
       setLoading(false);
     });
 
@@ -107,21 +129,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (error || !data.user) {
       throw error ?? new Error("Login failed");
     }
-    const role = await loadRole(data.user.id);
-    const next: AuthUser = {
-      id: data.user.id,
-      email: data.user.email ?? email,
-      name:
-        (data.user.user_metadata?.full_name as string | undefined) ??
-        fallbackName(email),
-      role
-    };
-    setUser(next);
-    return next;
+    // signInWithPassword fires onAuthStateChange; mark the ID so the listener
+    // skips a duplicate buildAuthUser call.
+    resolvedIdRef.current = data.user.id;
+    const authUser = await buildAuthUser(data.user);
+    setUser(authUser);
+    return authUser;
   }, []);
 
   const logout: AuthCtx["logout"] = useCallback(async () => {
     await supabase.auth.signOut();
+    resolvedIdRef.current = null;
     setUser(null);
   }, []);
 
