@@ -14,7 +14,9 @@ const logger = pino({ level: env.LOG_LEVEL });
 
 app.disable("x-powered-by");
 app.use(requestId());
-app.use(pinoHttp({ logger }));
+// pino v9 / pino-http v9 have a minor type mismatch — cast to silence it
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+app.use(pinoHttp({ logger: logger as any }));
 app.use(helmet());
 app.use(
   cors({
