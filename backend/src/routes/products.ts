@@ -5,7 +5,7 @@ import { anonClient } from "../lib/supabase";
 const router = Router();
 
 const listSchema = z.object({
-  limit: z.coerce.number().int().min(1).max(50).default(12),
+  limit: z.coerce.number().int().min(1).max(500).default(200),
   offset: z.coerce.number().int().min(0).default(0),
   query: z.string().optional()
 });

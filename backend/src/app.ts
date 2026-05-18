@@ -25,13 +25,27 @@ app.use(
     credentials: true
   })
 );
+// Strict rate limiter for signup — 5 attempts per 15 minutes per IP
+app.use(
+  "/api/v1/auth/signup",
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: (_req, res) => {
+      res.status(429).json({ error: "too_many_signup_attempts" });
+    }
+  })
+);
+
+// General rate limiter for all other routes
 app.use(
   rateLimit({
     windowMs: env.RATE_LIMIT_WINDOW_MS,
     max: env.RATE_LIMIT_MAX,
     standardHeaders: true,
     legacyHeaders: false,
-    skip: (req) => req.path === "/api/v1/auth/signup",
     handler: (_req, res) => {
       res.status(429).json({ error: "too_many_requests" });
     }

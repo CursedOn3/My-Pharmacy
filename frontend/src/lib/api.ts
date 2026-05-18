@@ -7,6 +7,13 @@ const API_BASE = (import.meta.env.VITE_API_URL as string | undefined)?.replace(
 
 type ApiResponse<T> = { data: T };
 
+type CartItemDto = {
+  id: string;
+  user_id: string;
+  product_id: string;
+  quantity: number;
+};
+
 type ProductDto = {
   id: string;
   name: string;
@@ -80,7 +87,11 @@ const apiFetch = async <T>(
   }
 
   const headers = new Headers(options.headers);
-  headers.set("Content-Type", "application/json");
+
+  // Only set Content-Type for requests that carry a body
+  if (options.body !== undefined && options.body !== null) {
+    headers.set("Content-Type", "application/json");
+  }
 
   if (requireAuth) {
     const token = await getAccessToken();
@@ -113,18 +124,25 @@ export const api = {
     });
     return res.data;
   },
-  async listProducts() {
-    const res = await apiFetch<ApiResponse<ProductDto[]>>("/products");
+  async listProducts(limit = 200) {
+    const res = await apiFetch<ApiResponse<ProductDto[]>>(`/products?limit=${limit}`);
     return res.data;
   },
   async listCart() {
-    const res = await apiFetch<ApiResponse<any[]>>("/cart", {}, true);
+    const res = await apiFetch<ApiResponse<CartItemDto[]>>("/cart", {}, true);
     return res.data;
   },
   async addCartItem(input: { product_id: string; quantity: number }) {
-    const res = await apiFetch<ApiResponse<any>>("/cart", {
+    const res = await apiFetch<ApiResponse<CartItemDto>>("/cart", {
       method: "POST",
       body: JSON.stringify(input)
+    }, true);
+    return res.data;
+  },
+  async updateCartItem(id: string, quantity: number) {
+    const res = await apiFetch<ApiResponse<CartItemDto>>(`/cart/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ quantity })
     }, true);
     return res.data;
   },

@@ -9,6 +9,7 @@ import {
 } from "react";
 import { toast } from "sonner";
 import type { Product } from "@/lib/products";
+import { parsePrice } from "@/lib/utils";
 import { useStore } from "@/context/StoreContext";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
@@ -30,17 +31,12 @@ type CartCtx = {
 
 const CartContext = createContext<CartCtx | null>(null);
 
-const parsePrice = (price: string) => Number(price.replace(/[^0-9.]/g, "")) || 0;
-
 export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [items, setItems] = useState<CartItem[]>([]);
   const [selected, setSelected] = useState<Product | null>(null);
-  const { getStock, inventory } = useStore();
+  // Consume the pre-built map from StoreContext — no duplicate Map creation
+  const { getStock, inventory, inventoryByName } = useStore();
   const { user } = useAuth();
-
-  const inventoryByName = useMemo(() => {
-    return new Map(inventory.map((i) => [i.name, i]));
-  }, [inventory]);
 
   const loadCart = useCallback(async () => {
     if (!user) return;
@@ -59,7 +55,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         .filter(Boolean) as CartItem[];
       setItems(next);
     } catch {
-      // ignore load errors for now
+      // ignore load errors — local state remains usable
     }
   }, [inventory, user]);
 
@@ -77,10 +73,13 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   const add: CartCtx["add"] = (p, qty = 1) => {
     const stock = getStock(p.name);
+    // Snapshot the items before optimistic update for potential rollback
+    let snapshot: CartItem[] = [];
+
     setItems((prev) => {
+      snapshot = prev;
       const existing = prev.find((i) => i.name === p.name);
       const currentQty = existing?.qty ?? 0;
-      // If we know the stock (>0), clamp; if unknown (0 may mean not yet seeded), allow
       if (stock > 0 && currentQty + qty > stock) {
         toast.error("Not enough stock", {
           description: `Only ${stock - currentQty} left of ${p.name}`,
@@ -96,13 +95,16 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       toast.success("Added to cart", { description: p.name });
       return [...prev, { ...p, qty }];
     });
+
     const item = inventoryByName.get(p.name) ?? (p.id ? { id: p.id } : null);
     if (user && item?.id) {
       api
         .addCartItem({ product_id: item.id, quantity: qty })
         .then(loadCart)
         .catch(() => {
-          // ignore errors, UI already updated
+          // Rollback optimistic update on failure
+          setItems(snapshot);
+          toast.error("Failed to add item to cart", { description: p.name });
         });
     }
   };
@@ -112,7 +114,12 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       const target = prev.find((i) => i.name === name);
       if (user && target?.cartItemId) {
         api.removeCartItem(target.cartItemId).catch(() => {
-          // ignore
+          // Restore removed item on failure
+          setItems((curr) => {
+            if (curr.find((i) => i.name === name)) return curr;
+            return target ? [target, ...curr] : curr;
+          });
+          toast.error("Failed to remove item");
         });
       }
       return prev.filter((i) => i.name !== name);
@@ -132,26 +139,45 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         });
       }
       const next = prev.map((i) => (i.name === name ? { ...i, qty: clamped } : i));
-      if (user) {
+
+      if (user && item.cartItemId) {
+        // Use PATCH to update the existing cart row — not a new upsert
+        api
+          .updateCartItem(item.cartItemId, clamped)
+          .catch(() => {
+            // Rollback to previous quantity on failure
+            setItems((curr) =>
+              curr.map((i) => (i.name === name ? { ...i, qty: item.qty } : i))
+            );
+            toast.error("Failed to update quantity");
+          });
+      } else if (user) {
+        // cartItemId not yet known — fall back to upsert then reload
         const target = inventoryByName.get(name);
         if (target) {
           api
             .addCartItem({ product_id: target.id, quantity: clamped })
             .then(loadCart)
             .catch(() => {
-              // ignore
+              setItems((curr) =>
+                curr.map((i) => (i.name === name ? { ...i, qty: item.qty } : i))
+              );
+              toast.error("Failed to update quantity");
             });
         }
       }
+
       return next;
     });
   };
 
   const clear = () => {
+    const snapshot = items;
     setItems([]);
     if (user) {
       api.clearCart().catch(() => {
-        // ignore
+        setItems(snapshot);
+        toast.error("Failed to clear cart");
       });
     }
   };
