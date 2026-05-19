@@ -149,6 +149,7 @@ function AdminOrdersPage() {
                   <th className="text-left py-2 px-2 font-semibold">Date</th>
                   <th className="text-left py-2 px-2 font-semibold">Items</th>
                   <th className="text-left py-2 px-2 font-semibold">Total</th>
+                  <th className="text-left py-2 px-2 font-semibold">Payment</th>
                   <th className="text-left py-2 px-2 font-semibold">Status</th>
                   <th className="text-right py-2 px-2 font-semibold">Actions</th>
                 </tr>
@@ -182,6 +183,23 @@ function AdminOrdersPage() {
                       </td>
                       <td className="py-3 px-2 font-bold text-primary-deep">
                         NPR {o.total.toFixed(2)}
+                      </td>
+                      <td className="py-3 px-2">
+                        <span
+                          className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${
+                            o.paymentStatus === "paid"
+                              ? "bg-mint text-primary-deep"
+                              : o.paymentMethod === "esewa"
+                                ? "bg-peach text-primary-deep"
+                                : "bg-sun text-primary-deep"
+                          }`}
+                        >
+                          {o.paymentMethod === "esewa"
+                            ? o.paymentStatus === "paid"
+                              ? "eSewa Paid"
+                              : "eSewa Pending"
+                            : "COD"}
+                        </span>
                       </td>
                       <td className="py-3 px-2">
                         <span
@@ -224,7 +242,7 @@ function AdminOrdersPage() {
                     </tr>
                     {expanded === o.id && (
                       <tr key={`${o.id}-detail`} className="bg-cream/40">
-                        <td colSpan={7} className="px-4 py-4">
+                        <td colSpan={8} className="px-4 py-4">
                           <div className="space-y-2">
                             <div className="text-xs font-bold uppercase tracking-wider text-primary-deep/60">
                               Items

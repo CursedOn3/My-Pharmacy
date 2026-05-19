@@ -36,6 +36,8 @@ export type Order = {
   shipping: number;
   total: number;
   status: OrderStatus;
+  paymentMethod: "esewa" | "cod" | null;
+  paymentStatus: "paid" | "pending" | "cod" | null;
   createdAt: string; // ISO
 };
 
@@ -88,6 +90,7 @@ type StoreCtx = {
     customerName: string;
     lines: { productName: string; qty: number }[];
     shipping: number;
+    paymentMethod?: "esewa" | "cod";
   }) => Promise<Order | null>;
   cancelOrder: (id: string) => Promise<void>;
   updateOrderStatus: (id: string, status: OrderStatus) => Promise<void>;
@@ -209,6 +212,8 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         shipping,
         total: subtotal + shipping,
         status: toOrderStatus(dto.status),
+        paymentMethod: dto.payment_method ?? null,
+        paymentStatus: dto.payment_status ?? null,
         createdAt: dto.created_at
       };
     },
@@ -376,7 +381,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   /* ------------------------------ orders ------------------------------ */
 
   const createOrder: StoreCtx["createOrder"] = useCallback(
-    async ({ customerEmail, customerName, lines, shipping }) => {
+    async ({ customerEmail, customerName, lines, shipping, paymentMethod }) => {
       const resolved: OrderLine[] = [];
       const payload: { product_id: string; quantity: number }[] = [];
 
@@ -398,7 +403,8 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         items: payload,
         notes: "",
         customer_email: customerEmail,
-        customer_name: customerName
+        customer_name: customerName,
+        payment_method: paymentMethod ?? "cod",
       });
 
       const order = mapOrder(dto);

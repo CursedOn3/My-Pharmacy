@@ -31,6 +31,8 @@ type OrderDto = {
   items: { product_id: string; quantity: number; unit_price: number }[];
   notes: string | null;
   status: string;
+  payment_method: "esewa" | "cod" | null;
+  payment_status: "paid" | "pending" | "cod" | null;
   created_at: string;
 };
 
@@ -216,6 +218,7 @@ export const api = {
     notes?: string;
     customer_email: string;
     customer_name: string;
+    payment_method?: "esewa" | "cod";
   }) {
     const res = await apiFetch<ApiResponse<OrderDto>>("/orders", {
       method: "POST",
