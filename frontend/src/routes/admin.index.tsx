@@ -5,7 +5,6 @@ import {
   Boxes,
   BadgePercent,
   Stethoscope,
-  Calendar,
   Users,
 } from "lucide-react";
 
@@ -14,13 +13,6 @@ export const Route = createFileRoute("/admin/")({
 });
 
 const QUICK_ACTIONS = [
-  {
-    to: "/admin/services",
-    icon: Stethoscope,
-    label: "Manage Services",
-    desc: "Lab tests & physiotherapy",
-    bg: "bg-mint",
-  },
   {
     to: "/admin/orders",
     icon: Package,
@@ -56,6 +48,13 @@ const QUICK_ACTIONS = [
     desc: "View customer activity",
     bg: "bg-mint",
   },
+  {
+    to: "/admin/services",
+    icon: Stethoscope,
+    label: "Health Services",
+    desc: "Manage bookings & staff",
+    bg: "bg-lavender",
+  }
 ] as const;
 
 function AdminDashboard() {
