@@ -306,12 +306,13 @@ function AdminDashboard() {
 
         <Card className="lg:col-span-3">
           <CardHeader title="Quick admin actions" />
-          <div className="grid sm:grid-cols-4 gap-3">
-            <QuickAction to="/admin/orders" icon={Package} label="All orders" desc="Manage shipments" bg="bg-mint" />
-            <QuickAction to="/admin/prescriptions" icon={FileText} label="Review Rx" desc="Approve / reject" bg="bg-sun" />
-            <QuickAction to="/admin/customers" icon={Users} label="Customers" desc="Manage accounts" bg="bg-peach" />
+          <div className="grid sm:grid-cols-3 md:grid-cols-6 gap-3">
+            <QuickAction to="/admin/services" icon={TestTube} label="Services" desc="Lab & physio" bg="bg-mint" />
+            <QuickAction to="/admin/orders" icon={Package} label="All orders" desc="Manage shipments" bg="bg-sun" />
+            <QuickAction to="/admin/prescriptions" icon={FileText} label="Review Rx" desc="Approve / reject" bg="bg-peach" />
+            <QuickAction to="/admin/customers" icon={Users} label="Customers" desc="Manage accounts" bg="bg-cream" />
             <QuickAction to="/admin/inventory" icon={CheckCircle2} label="Inventory" desc="Stock & catalog" bg="bg-rose" />
-            <QuickAction to="/admin/marketing" icon={BadgePercent} label="Discounts & banners" desc="Manage promos" bg="bg-cream" />
+            <QuickAction to="/admin/marketing" icon={BadgePercent} label="Discounts & banners" desc="Manage promos" bg="bg-mint" />
           </div>
         </Card>
       </div>
@@ -407,7 +408,8 @@ function QuickAction({
     | "/admin/prescriptions"
     | "/admin/customers"
     | "/admin/inventory"
-    | "/admin/marketing";
+    | "/admin/marketing"
+    | "/admin/services";
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   desc: string;
