@@ -13,6 +13,7 @@ const faqs: FAQItem[] = [
   { q: "Can I keep the same doctor for follow-ups?", a: "Absolutely. You can request the same doctor for follow-ups, building continuity of care." },
   { q: "What happens if I don't get a response from a doctor?", a: "We guarantee a response within 5 minutes or your consultation is free.", highlighted: true },
   { q: "Can I download my prescription from Medicare?", a: "Yes — every consultation generates a digital prescription you can download or share with any pharmacy." },
+  { q: "How are delivery charges calculated?", a: "Delivery charge is NPR 100 for addresses inside the city and NPR 200 for outside the city." },
 ];
 
 const FAQ = () => {
