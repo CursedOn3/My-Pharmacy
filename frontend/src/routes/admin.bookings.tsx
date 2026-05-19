@@ -217,7 +217,7 @@ function AdminBookingsPage() {
                         {b.visit_type === "home" ? "Home visit" : "Clinic visit"}
                       </span>
                       {svc && (
-                        <span className="font-semibold">${svc.price}</span>
+                        <span className="font-semibold">NPR {svc.price}</span>
                       )}
                     </div>
 

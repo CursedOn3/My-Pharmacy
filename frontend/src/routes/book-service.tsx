@@ -189,7 +189,7 @@ function BookServicePage() {
                       </div>
                       <div className="text-right">
                         <div className="font-display text-2xl font-extrabold text-primary-deep">
-                          ${svc.price}
+                          NPR {svc.price}
                         </div>
                         <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                           {svc.type === "lab" ? "per test" : "per session"}
@@ -253,7 +253,7 @@ function BookServicePage() {
                   {selectedService.name}
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  ${selectedService.price} ·{" "}
+                  NPR {selectedService.price} ·{" "}
                   {selectedService.type === "lab" ? "Lab test" : "Physiotherapy"}
                 </p>
               </div>

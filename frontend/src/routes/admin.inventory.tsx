@@ -42,7 +42,7 @@ const productSchema = z.object({
   price: z
     .number({ message: "Enter a valid price" })
     .min(0.01, { message: "Price must be greater than 0" })
-    .max(10000, { message: "Price must be under $10,000" }),
+    .max(10000, { message: "Price must be under NPR 10,000" }),
   stock: z
     .number({ message: "Enter a valid stock count" })
     .int({ message: "Stock must be a whole number" })
@@ -225,7 +225,7 @@ function AdminInventoryPage() {
               brand: values.brand || "Generic",
               category: values.category || "General",
               description: values.description,
-              price: `$${values.price.toFixed(2)}`,
+              price: `NPR ${values.price.toFixed(2)}`,
               image: values.image,
               stock: values.stock,
             });
@@ -249,7 +249,7 @@ function AdminInventoryPage() {
               brand: values.brand || editing.brand || "Generic",
               category: values.category || editing.category || "General",
               description: values.description,
-              price: `$${values.price.toFixed(2)}`,
+              price: `NPR ${values.price.toFixed(2)}`,
               image: values.image,
               stock: values.stock,
             });

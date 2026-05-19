@@ -179,7 +179,7 @@ function PhysiotherapyPage() {
                     </div>
                     <div className="text-right">
                       <div className="font-display text-2xl font-extrabold text-primary-deep">
-                        ${s.price}
+                        NPR {s.price}
                       </div>
                       <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                         per session

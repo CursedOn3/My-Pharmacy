@@ -123,7 +123,7 @@ function OrdersPage() {
                       {o.status}
                     </span>
                     <span className="text-sm font-bold text-primary-deep">
-                      ${o.total.toFixed(2)}
+                      NPR {o.total.toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -146,7 +146,7 @@ function OrdersPage() {
                           {l.name}
                         </div>
                         <div className="text-muted-foreground">
-                          ×{l.qty} · ${l.unitPrice.toFixed(2)}
+                          ×{l.qty} · NPR {l.unitPrice.toFixed(2)}
                         </div>
                       </div>
                     </div>

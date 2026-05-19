@@ -165,7 +165,7 @@ function AdminServicesPage() {
                 onChange={(e) => setPrice(e.target.value)}
                 type="number"
                 min={0}
-                placeholder="Price ($)"
+                placeholder="Price (NPR)"
                 className="bg-muted rounded-xl px-3 py-2 text-sm outline-none"
               />
               <input
@@ -300,7 +300,7 @@ function ServiceList({
                 {svc.name}
               </p>
               <p className="text-xs text-muted-foreground">
-                ${svc.price} · {svc.duration ?? "N/A"} ·{" "}
+                NPR {svc.price} · {svc.duration ?? "N/A"} ·{" "}
                 {svc.home_available ? "Home visits" : "Clinic only"}
               </p>
             </div>

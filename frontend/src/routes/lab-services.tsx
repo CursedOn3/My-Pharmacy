@@ -180,7 +180,7 @@ function LabServicesPage() {
                     </div>
                     <div className="text-right">
                       <div className="font-display text-2xl font-extrabold text-primary-deep">
-                        ${t.price}
+                        NPR {t.price}
                       </div>
                       <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                         starting at

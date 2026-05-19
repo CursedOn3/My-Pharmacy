@@ -6,6 +6,7 @@ import Footer from "@/components/pharmacy/Footer";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { useStore } from "@/context/StoreContext";
+import { api } from "@/lib/api";
 import {
   Package,
   FileText,
@@ -115,7 +116,7 @@ function UserDashboard() {
           <StatCard icon={Package} label="Active orders" value={String(activeOrders)} bg="bg-mint" />
           <StatCard icon={FileText} label="Prescriptions" value={String(prescriptions.length)} bg="bg-sun" />
           <StatCard icon={ShoppingBag} label="Cart items" value={String(count)} bg="bg-peach" />
-          <StatCard icon={CreditCard} label="Cart value" value={`$${subtotal.toFixed(2)}`} bg="bg-rose" />
+          <StatCard icon={CreditCard} label="Cart value" value={`NPR ${subtotal.toFixed(2)}`} bg="bg-rose" />
         </div>
 
         <div className="grid lg:grid-cols-3 gap-4">
@@ -134,7 +135,7 @@ function UserDashboard() {
                       {o.lines.reduce((s, l) => s + l.qty, 0) === 1 ? "" : "s"}
                     </p>
                   </div>
-                  <span className="text-sm font-bold text-primary-deep">${o.total.toFixed(2)}</span>
+                  <span className="text-sm font-bold text-primary-deep">NPR {o.total.toFixed(2)}</span>
                   <span className="hidden sm:inline-block text-[10px] font-bold uppercase bg-mint text-primary-deep px-2 py-1 rounded-full">
                     {o.status}
                   </span>
@@ -200,6 +201,17 @@ function UserDashboard() {
 
 function AdminDashboard() {
   const { orders, prescriptions, customers } = useStore();
+  const [bookings, setBookings] = useState<{ status: string; service_id: string; created_at: string }[]>([]);
+  const [services, setServices] = useState<{ id: string; price: number }[]>([]);
+
+  useEffect(() => {
+    Promise.all([api.adminListBookings(), api.adminListServices()])
+      .then(([bk, svc]) => {
+        setBookings(bk);
+        setServices(svc);
+      })
+      .catch(() => {});
+  }, []);
 
   const recentOrders = useMemo(() => orders.slice(0, 5), [orders]);
   const pendingRx = useMemo(
@@ -212,19 +224,26 @@ function AdminDashboard() {
     const todayOrders = orders.filter(
       (o) => new Date(o.createdAt).toDateString() === today
     );
-    const revenueToday = todayOrders.reduce((s, o) => s + o.total, 0);
+    const orderRevenue = todayOrders.reduce((s, o) => s + o.total, 0);
+
+    const serviceMap = new Map(services.map((s) => [s.id, s.price]));
+    const todayBookings = bookings.filter(
+      (b) => b.status === "completed" && new Date(b.created_at).toDateString() === today
+    );
+    const serviceRevenue = todayBookings.reduce((s, b) => s + (serviceMap.get(b.service_id) ?? 0), 0);
+
     return {
-      revenueToday,
+      revenueToday: orderRevenue + serviceRevenue,
       ordersToday: todayOrders.length,
       pendingRx: prescriptions.filter((rx) => rx.status === "Pending").length,
       customers: customers.length
     };
-  }, [orders, prescriptions, customers]);
+  }, [orders, prescriptions, customers, bookings, services]);
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard icon={TrendingUp} label="Revenue today" value={`$${stats.revenueToday.toFixed(2)}`} bg="bg-mint" />
+        <StatCard icon={TrendingUp} label="Revenue today" value={`NPR ${stats.revenueToday.toFixed(2)}`} bg="bg-mint" />
         <StatCard icon={Package} label="Orders today" value={String(stats.ordersToday)} bg="bg-sun" />
         <StatCard icon={FileText} label="Pending Rx" value={String(stats.pendingRx)} bg="bg-peach" />
         <StatCard icon={Users} label="Customers" value={String(stats.customers)} bg="bg-rose" />
@@ -252,7 +271,7 @@ function AdminDashboard() {
                   <tr key={o.id}>
                     <td className="py-3 font-semibold text-primary-deep">{o.id}</td>
                     <td className="py-3 text-primary-deep/80">{o.customerName}</td>
-                    <td className="py-3 font-bold text-primary-deep">${o.total.toFixed(2)}</td>
+                    <td className="py-3 font-bold text-primary-deep">NPR {o.total.toFixed(2)}</td>
                     <td className="py-3">
                       <span
                         className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${statusColor(o.status)}`}
