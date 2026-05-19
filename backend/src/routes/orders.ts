@@ -91,4 +91,44 @@ router.post("/", requireAuth, async (req, res, next) => {
   }
 });
 
+router.patch("/:id/cancel", requireAuth, async (req, res, next) => {
+  try {
+    const { id } = z.object({ id: z.string().min(1) }).parse(req.params);
+    const client = res.locals.userClient;
+
+    const { data: order, error: fetchErr } = await client
+      .from("orders")
+      .select("id, status, user_id")
+      .eq("id", id)
+      .single();
+
+    if (fetchErr || !order) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    if (order.user_id !== req.user!.id) {
+      return res.status(403).json({ error: "Not your order" });
+    }
+
+    if (order.status !== "pending") {
+      return res.status(400).json({ error: "Only pending orders can be cancelled" });
+    }
+
+    const { data, error } = await serviceClient
+      .from("orders")
+      .update({ status: "cancelled" })
+      .eq("id", id)
+      .select("*")
+      .single();
+
+    if (error) {
+      return next(error);
+    }
+
+    res.json({ data });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

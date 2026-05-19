@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo } from "react";
-import { Package, RefreshCcw, ShoppingBag } from "lucide-react";
+import { Package, RefreshCcw, ShoppingBag, XCircle } from "lucide-react";
 import Header from "@/components/pharmacy/Header";
 import Footer from "@/components/pharmacy/Footer";
 import { useAuth } from "@/context/AuthContext";
@@ -29,7 +29,7 @@ export const Route = createFileRoute("/orders")({
 
 function OrdersPage() {
   const { user } = useAuth();
-  const { orders, inventory } = useStore();
+  const { orders, inventory, cancelOrder } = useStore();
   const { add } = useCart();
   const navigate = useNavigate();
 
@@ -158,12 +158,29 @@ function OrdersPage() {
                     {o.lines.length} line item
                     {o.lines.length === 1 ? "" : "s"}
                   </p>
-                  <button
-                    onClick={() => reorder(o)}
-                    className="inline-flex items-center gap-1.5 bg-primary-deep text-primary-deep-foreground px-4 py-2 rounded-full text-xs font-semibold hover:scale-[1.02] transition-transform"
-                  >
-                    <RefreshCcw className="h-3.5 w-3.5" /> Reorder
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {o.status === "Pending" && (
+                      <button
+                        onClick={async () => {
+                          try {
+                            await cancelOrder(o.id);
+                            toast.success("Order cancelled");
+                          } catch {
+                            toast.error("Failed to cancel order");
+                          }
+                        }}
+                        className="inline-flex items-center gap-1.5 bg-destructive/10 text-destructive px-4 py-2 rounded-full text-xs font-semibold hover:bg-destructive/20 transition-colors"
+                      >
+                        <XCircle className="h-3.5 w-3.5" /> Cancel
+                      </button>
+                    )}
+                    <button
+                      onClick={() => reorder(o)}
+                      className="inline-flex items-center gap-1.5 bg-primary-deep text-primary-deep-foreground px-4 py-2 rounded-full text-xs font-semibold hover:scale-[1.02] transition-transform"
+                    >
+                      <RefreshCcw className="h-3.5 w-3.5" /> Reorder
+                    </button>
+                  </div>
                 </div>
               </article>
             ))}

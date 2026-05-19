@@ -3,6 +3,7 @@ import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import { anonClient, serviceClient } from "../lib/supabase";
 import { requireAuth } from "../middleware/auth";
+import { env } from "../config/env";
 
 const router = Router();
 
@@ -67,6 +68,53 @@ router.post("/signup", signupLimiter, async (req, res, next) => {
         email: data.user.email ?? email
       }
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Strict rate limiter for password reset — 3 requests per 15 min per IP
+const forgotPasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 3,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_req, res) => {
+    res.status(429).json({ error: "too_many_requests" });
+  }
+});
+
+const forgotPasswordSchema = z.object({
+  email: z.string().trim().email().max(255)
+});
+
+router.post("/forgot-password", forgotPasswordLimiter, async (req, res, next) => {
+  try {
+    const { email } = forgotPasswordSchema.parse(req.body);
+
+    const redirectTo = `${env.FRONTEND_URL}/reset-password`;
+
+    const { data, error } = await serviceClient.auth.admin.generateLink({
+      type: "recovery",
+      email,
+      options: { redirectTo }
+    });
+
+    if (error) {
+      // Don't reveal whether the email exists — return 200 regardless
+      console.error("[forgot-password] generateLink error:", error.message);
+      return res.json({ sent: true });
+    }
+
+    // In development: return the magic link in the response so it can be
+    // displayed directly on the page without needing email delivery.
+    // In production: the link is only delivered via Supabase email.
+    const responseBody: { sent: boolean; devLink?: string } = { sent: true };
+    if (env.NODE_ENV === "development" && data?.properties?.action_link) {
+      responseBody.devLink = data.properties.action_link;
+    }
+
+    res.json(responseBody);
   } catch (err) {
     next(err);
   }

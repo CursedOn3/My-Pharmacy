@@ -56,6 +56,33 @@ type FavoriteRow = {
   products: ProductDto | null;
 };
 
+type ServiceDto = {
+  id: string;
+  name: string;
+  type: "lab" | "physiotherapy";
+  description: string | null;
+  price: number;
+  duration: string | null;
+  home_available: boolean;
+  active?: boolean;
+  created_at?: string;
+};
+
+type BookingDto = {
+  id: string;
+  service_id: string;
+  user_id: string;
+  visit_type: "home" | "clinic";
+  preferred_date: string;
+  preferred_time: string;
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string;
+  notes: string | null;
+  status: "pending" | "confirmed" | "completed" | "cancelled";
+  created_at: string;
+};
+
 type MarketingDiscount = {
   id: string;
   product_id: string;
@@ -124,8 +151,18 @@ export const api = {
     });
     return res.data;
   },
+  async forgotPassword(email: string): Promise<{ sent: boolean; devLink?: string }> {
+    return apiFetch("/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email })
+    });
+  },
   async listProducts(limit = 200) {
     const res = await apiFetch<ApiResponse<ProductDto[]>>(`/products?limit=${limit}`);
+    return res.data;
+  },
+  async listActiveDiscounts() {
+    const res = await apiFetch<ApiResponse<{ product_id: string; percent: number }[]>>("/products/discounts/active");
     return res.data;
   },
   async listCart() {
@@ -172,6 +209,12 @@ export const api = {
     }, true);
     return res.data;
   },
+  async cancelOrder(id: string) {
+    const res = await apiFetch<ApiResponse<OrderDto>>(`/orders/${id}/cancel`, {
+      method: "PATCH"
+    }, true);
+    return res.data;
+  },
   async adminListOrders() {
     const res = await apiFetch<ApiResponse<OrderDto[]>>("/admin/orders", {}, true);
     return res.data;
@@ -179,7 +222,7 @@ export const api = {
   async adminUpdateOrder(id: string, status: string) {
     const res = await apiFetch<ApiResponse<OrderDto>>(`/admin/orders/${id}`, {
       method: "PATCH",
-      body: JSON.stringify({ status })
+      body: JSON.stringify({ status: status.toLowerCase() })
     }, true);
     return res.data;
   },
@@ -318,6 +361,64 @@ export const api = {
   },
   async adminDeleteBanner(id: string) {
     await apiFetch<void>(`/admin/marketing/banners/${id}`, { method: "DELETE" }, true);
+  },
+  // Services
+  async listServices() {
+    const res = await apiFetch<ApiResponse<ServiceDto[]>>("/services");
+    return res.data;
+  },
+  async createBooking(input: {
+    service_id: string;
+    visit_type: "home" | "clinic";
+    preferred_date: string;
+    preferred_time: string;
+    customer_name: string;
+    customer_email: string;
+    customer_phone: string;
+    notes?: string;
+  }) {
+    const res = await apiFetch<ApiResponse<BookingDto>>("/services/bookings", {
+      method: "POST",
+      body: JSON.stringify(input)
+    }, true);
+    return res.data;
+  },
+  async listMyBookings() {
+    const res = await apiFetch<ApiResponse<BookingDto[]>>("/services/bookings", {}, true);
+    return res.data;
+  },
+  // Admin services
+  async adminListServices() {
+    const res = await apiFetch<ApiResponse<ServiceDto[]>>("/admin/services", {}, true);
+    return res.data;
+  },
+  async adminCreateService(input: { name: string; type: "lab" | "physiotherapy"; description?: string; price: number; duration?: string; home_available?: boolean; active?: boolean }) {
+    const res = await apiFetch<ApiResponse<ServiceDto>>("/admin/services", {
+      method: "POST",
+      body: JSON.stringify(input)
+    }, true);
+    return res.data;
+  },
+  async adminUpdateService(id: string, input: Partial<{ name: string; type: "lab" | "physiotherapy"; description: string; price: number; duration: string; home_available: boolean; active: boolean }>) {
+    const res = await apiFetch<ApiResponse<ServiceDto>>(`/admin/services/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input)
+    }, true);
+    return res.data;
+  },
+  async adminDeleteService(id: string) {
+    await apiFetch<void>(`/admin/services/${id}`, { method: "DELETE" }, true);
+  },
+  async adminListBookings() {
+    const res = await apiFetch<ApiResponse<BookingDto[]>>("/admin/bookings", {}, true);
+    return res.data;
+  },
+  async adminUpdateBooking(id: string, status: string) {
+    const res = await apiFetch<ApiResponse<BookingDto>>(`/admin/bookings/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status })
+    }, true);
+    return res.data;
   }
 };
 
@@ -327,5 +428,7 @@ export type {
   PrescriptionDto,
   FavoriteRow,
   MarketingDiscount,
-  MarketingBanner
+  MarketingBanner,
+  ServiceDto,
+  BookingDto
 };

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { anonClient } from "../lib/supabase";
+import { anonClient, serviceClient } from "../lib/supabase";
 
 const router = Router();
 
@@ -29,6 +29,23 @@ router.get("/", async (req, res, next) => {
     }
 
     res.json({ data, limit, offset });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get("/discounts/active", async (_req, res, next) => {
+  try {
+    const { data, error } = await serviceClient
+      .from("marketing_discounts")
+      .select("product_id, percent")
+      .eq("active", true);
+
+    if (error) {
+      return next(error);
+    }
+
+    res.json({ data });
   } catch (err) {
     next(err);
   }

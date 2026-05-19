@@ -378,4 +378,169 @@ router.delete("/marketing/banners/:id", async (req, res, next) => {
   }
 });
 
+// ─── Services (Lab & Physiotherapy) ───
+
+const SERVICE_TYPE = z.enum(["lab", "physiotherapy"]);
+
+router.get("/services", async (req, res, next) => {
+  try {
+    const typeFilter = req.query.type as string | undefined;
+    let query = serviceClient
+      .from("services")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (typeFilter && (typeFilter === "lab" || typeFilter === "physiotherapy")) {
+      query = query.eq("type", typeFilter);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      return next(error);
+    }
+
+    res.json({ data });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/services", async (req, res, next) => {
+  try {
+    const payload = z
+      .object({
+        name: z.string().min(1),
+        type: SERVICE_TYPE,
+        description: z.string().optional(),
+        price: z.number().nonnegative(),
+        duration: z.string().optional(),
+        home_available: z.boolean().optional(),
+        active: z.boolean().optional()
+      })
+      .parse(req.body);
+
+    const { data, error } = await serviceClient
+      .from("services")
+      .insert({
+        name: payload.name,
+        type: payload.type,
+        description: payload.description ?? null,
+        price: payload.price,
+        duration: payload.duration ?? null,
+        home_available: payload.home_available ?? false,
+        active: payload.active ?? true
+      })
+      .select("*")
+      .single();
+
+    if (error) {
+      return next(error);
+    }
+
+    res.status(201).json({ data });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch("/services/:id", async (req, res, next) => {
+  try {
+    const { id } = z.object({ id: z.string().min(1) }).parse(req.params);
+    const payload = z
+      .object({
+        name: z.string().min(1).optional(),
+        type: SERVICE_TYPE.optional(),
+        description: z.string().optional(),
+        price: z.number().nonnegative().optional(),
+        duration: z.string().optional(),
+        home_available: z.boolean().optional(),
+        active: z.boolean().optional()
+      })
+      .parse(req.body);
+
+    const { data, error } = await serviceClient
+      .from("services")
+      .update(payload)
+      .eq("id", id)
+      .select("*")
+      .single();
+
+    if (error) {
+      return next(error);
+    }
+
+    res.json({ data });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete("/services/:id", async (req, res, next) => {
+  try {
+    const { id } = z.object({ id: z.string().min(1) }).parse(req.params);
+    const { error } = await serviceClient.from("services").delete().eq("id", id);
+
+    if (error) {
+      return next(error);
+    }
+
+    res.status(204).send();
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── Bookings ───
+
+router.get("/bookings", async (req, res, next) => {
+  try {
+    const statusFilter = req.query.status as string | undefined;
+    let query = serviceClient
+      .from("bookings")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (statusFilter) {
+      query = query.eq("status", statusFilter);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      return next(error);
+    }
+
+    res.json({ data });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch("/bookings/:id", async (req, res, next) => {
+  try {
+    const { id } = z.object({ id: z.string().min(1) }).parse(req.params);
+    const payload = z
+      .object({
+        status: z.enum(["pending", "confirmed", "completed", "cancelled"])
+      })
+      .parse(req.body);
+
+    const { data, error } = await serviceClient
+      .from("bookings")
+      .update({ status: payload.status })
+      .eq("id", id)
+      .select("*")
+      .single();
+
+    if (error) {
+      return next(error);
+    }
+
+    res.json({ data });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

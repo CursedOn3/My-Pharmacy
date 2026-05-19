@@ -10,7 +10,9 @@ const schema = z.object({
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(60000),
   SUPABASE_URL: z.string().url(),
   SUPABASE_ANON_KEY: z.string().min(1),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1)
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  // URL of the frontend app — used to build the redirect URL in the magic link
+  FRONTEND_URL: z.string().url().default("http://localhost:8080")
 });
 
 export const env = schema.parse(process.env);

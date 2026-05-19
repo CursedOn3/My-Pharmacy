@@ -242,7 +242,7 @@ function LabServicesPage() {
                     {t.turnaround}
                   </div>
                   <Link
-                    to="/contact"
+                    to="/book-service"
                     className="text-xs font-bold bg-primary-deep text-primary-deep-foreground px-3 py-1.5 rounded-full hover:opacity-90"
                   >
                     Book now
