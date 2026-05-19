@@ -13,6 +13,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export const supabase = createClient(supabaseUrl ?? "", supabaseAnonKey ?? "", {
   auth: {
     persistSession: true,
-    autoRefreshToken: true
+    autoRefreshToken: true,
+    storageKey: "medicare-auth",
+    storage: localStorage,
+    detectSessionInUrl: true,
   }
 });

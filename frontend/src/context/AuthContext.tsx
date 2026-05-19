@@ -78,41 +78,53 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     let active = true;
 
-    const syncSession = async () => {
-      const { data } = await supabase.auth.getSession();
-      const sessionUser = data.session?.user ?? null;
+    const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      const sessionUser = session?.user ?? null;
+
       if (!sessionUser) {
+        resolvedIdRef.current = null;
         if (active) {
           setUser(null);
           setLoading(false);
         }
         return;
       }
-      // Mark this ID so the onAuthStateChange listener skips a duplicate call
+
+      if (event === "TOKEN_REFRESHED" && resolvedIdRef.current === sessionUser.id) {
+        if (active) setLoading(false);
+        return;
+      }
+
+      if (resolvedIdRef.current === sessionUser.id) {
+        if (active) setLoading(false);
+        return;
+      }
+
       resolvedIdRef.current = sessionUser.id;
       const authUser = await buildAuthUser(sessionUser);
       if (active) {
         setUser(authUser);
         setLoading(false);
       }
-    };
+    });
 
-    syncSession();
-
-    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      const sessionUser = session?.user ?? null;
+    supabase.auth.getSession().then(async ({ data }) => {
+      const sessionUser = data.session?.user ?? null;
+      if (!active) return;
       if (!sessionUser) {
-        resolvedIdRef.current = null;
-        setUser(null);
         setLoading(false);
         return;
       }
-      // Skip if syncSession already resolved this exact session user
-      if (resolvedIdRef.current === sessionUser.id) return;
+      if (resolvedIdRef.current === sessionUser.id) {
+        setLoading(false);
+        return;
+      }
       resolvedIdRef.current = sessionUser.id;
       const authUser = await buildAuthUser(sessionUser);
-      setUser(authUser);
-      setLoading(false);
+      if (active) {
+        setUser(authUser);
+        setLoading(false);
+      }
     });
 
     return () => {
