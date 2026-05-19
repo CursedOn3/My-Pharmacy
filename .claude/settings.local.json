@@ -3,7 +3,9 @@
     "allow": [
       "Bash(curl -s http://localhost:4000/products)",
       "Bash(curl *)",
-      "WebFetch(domain:developer.esewa.com.np)"
+      "WebFetch(domain:developer.esewa.com.np)",
+      "Bash(npm install *)",
+      "Bash(git checkout *)"
     ]
   }
 }

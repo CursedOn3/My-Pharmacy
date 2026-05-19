@@ -19,6 +19,7 @@ const createSchema = z.object({
   customer_name: z.string().min(1),
   notes: z.string().optional(),
   payment_method: z.enum(["esewa", "cod"]).default("cod"),
+  shipping: z.coerce.number().min(0).default(0),
 });
 
 router.get("/", requireAuth, async (req, res, next) => {
@@ -74,6 +75,7 @@ router.post("/", requireAuth, async (req, res, next) => {
         user_id: req.user!.id,
         payment_method: payload.payment_method,
         payment_status: payload.payment_method === "cod" ? "cod" : "pending",
+        shipping: payload.shipping,
       })
       .select("*")
       .single();
