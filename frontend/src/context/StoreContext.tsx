@@ -176,10 +176,14 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     [inventory]
   );
 
+  const inventoryByIdRef = useRef(inventoryById);
+  inventoryByIdRef.current = inventoryById;
+
   const mapOrder = useCallback(
     (dto: OrderDto): Order => {
+      const currentInventoryById = inventoryByIdRef.current;
       const lines = dto.items.map((line) => {
-        const product = inventoryById.get(line.product_id);
+        const product = currentInventoryById.get(line.product_id);
         const unitPrice =
           line.unit_price != null && line.unit_price > 0
             ? line.unit_price
@@ -208,7 +212,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         createdAt: dto.created_at
       };
     },
-    [inventoryById]
+    []
   );
 
   const mapPrescription = useCallback((dto: PrescriptionDto): Prescription => {
@@ -307,7 +311,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       }, 500);
     };
 
-    const intervalId = window.setInterval(debouncedLoad, 10_000);
+    const intervalId = window.setInterval(debouncedLoad, 30_000);
 
     window.addEventListener("focus", debouncedLoad);
     document.addEventListener("visibilitychange", () => {
@@ -416,18 +420,43 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
 
   const cancelOrder: StoreCtx["cancelOrder"] = useCallback(
     async (id) => {
-      await api.cancelOrder(id);
       setOrders((prev) =>
         prev.map((o) => (o.id === id ? { ...o, status: "Cancelled" as OrderStatus } : o))
       );
+      try {
+        await api.cancelOrder(id);
+      } catch (err) {
+        setOrders((prev) =>
+          prev.map((o) => (o.id === id ? { ...o, status: "Pending" as OrderStatus } : o))
+        );
+        throw err;
+      }
     },
     []
   );
 
   const updateOrderStatus: StoreCtx["updateOrderStatus"] = useCallback(
     async (id, status) => {
-      await api.adminUpdateOrder(id, status);
-      setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o)));
+      let prevStatus: OrderStatus | null = null;
+      setOrders((prev) =>
+        prev.map((o) => {
+          if (o.id === id) {
+            prevStatus = o.status;
+            return { ...o, status };
+          }
+          return o;
+        })
+      );
+      try {
+        await api.adminUpdateOrder(id, status);
+      } catch (err) {
+        if (prevStatus !== null) {
+          setOrders((prev) =>
+            prev.map((o) => (o.id === id ? { ...o, status: prevStatus! } : o))
+          );
+        }
+        throw err;
+      }
     },
     []
   );
@@ -440,25 +469,33 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
 
   const updatePrescription: StoreCtx["updatePrescription"] = useCallback(
     async (id, patch) => {
-      // Only send status if explicitly provided — never default to "Pending"
       if (!patch.status) {
         throw new Error("updatePrescription requires an explicit status");
       }
-      await api.adminUpdatePrescription(id, {
-        status: patch.status,
-        reviewer_note: patch.reviewerNote
-      });
+      const reviewedAt = new Date().toISOString();
+      let snapshot: Prescription | undefined;
       setPrescriptions((prev) =>
-        prev.map((rx) =>
-          rx.id === id
-            ? {
-                ...rx,
-                ...patch,
-                reviewedAt: new Date().toISOString()
-              }
-            : rx
-        )
+        prev.map((rx) => {
+          if (rx.id === id) {
+            snapshot = rx;
+            return { ...rx, ...patch, reviewedAt };
+          }
+          return rx;
+        })
       );
+      try {
+        await api.adminUpdatePrescription(id, {
+          status: patch.status,
+          reviewer_note: patch.reviewerNote
+        });
+      } catch (err) {
+        if (snapshot) {
+          setPrescriptions((prev) =>
+            prev.map((rx) => (rx.id === id ? snapshot! : rx))
+          );
+        }
+        throw err;
+      }
     },
     []
   );
