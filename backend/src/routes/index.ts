@@ -10,6 +10,7 @@ import eventsRouter from "./events";
 import favoritesRouter from "./favorites";
 import wishlistRouter from "./wishlist";
 import servicesRouter from "./services";
+import paymentsRouter from "./payments";
 
 const router = Router();
 
@@ -24,5 +25,6 @@ router.use("/events", eventsRouter);
 router.use("/favorites", favoritesRouter);
 router.use("/wishlist", wishlistRouter);
 router.use("/services", servicesRouter);
+router.use("/payments", paymentsRouter);
 
 export default router;

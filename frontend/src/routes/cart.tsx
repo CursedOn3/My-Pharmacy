@@ -20,7 +20,7 @@ function CartPage() {
   const { items, setQty, remove, subtotal, clear } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const shipping = items.length > 0 ? 4.99 : 0;
+  const shipping = items.length > 0 ? 100 : 0;
   const total = subtotal + shipping;
 
   const handleCheckout = () => {

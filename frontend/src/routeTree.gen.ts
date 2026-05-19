@@ -16,6 +16,8 @@ import { Route as ReorderFavoritesRouteImport } from './routes/reorder-favorites
 import { Route as ProductsRouteImport } from './routes/products'
 import { Route as PrescriptionRouteImport } from './routes/prescription'
 import { Route as PhysiotherapyRouteImport } from './routes/physiotherapy'
+import { Route as PaymentSuccessRouteImport } from './routes/payment-success'
+import { Route as PaymentFailureRouteImport } from './routes/payment-failure'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LabServicesRouteImport } from './routes/lab-services'
@@ -72,6 +74,16 @@ const PrescriptionRoute = PrescriptionRouteImport.update({
 const PhysiotherapyRoute = PhysiotherapyRouteImport.update({
   id: '/physiotherapy',
   path: '/physiotherapy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PaymentSuccessRoute = PaymentSuccessRouteImport.update({
+  id: '/payment-success',
+  path: '/payment-success',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PaymentFailureRoute = PaymentFailureRouteImport.update({
+  id: '/payment-failure',
+  path: '/payment-failure',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OrdersRoute = OrdersRouteImport.update({
@@ -199,6 +211,8 @@ export interface FileRoutesByFullPath {
   '/lab-services': typeof LabServicesRoute
   '/login': typeof LoginRoute
   '/orders': typeof OrdersRoute
+  '/payment-failure': typeof PaymentFailureRoute
+  '/payment-success': typeof PaymentSuccessRoute
   '/physiotherapy': typeof PhysiotherapyRoute
   '/prescription': typeof PrescriptionRoute
   '/products': typeof ProductsRoute
@@ -229,6 +243,8 @@ export interface FileRoutesByTo {
   '/lab-services': typeof LabServicesRoute
   '/login': typeof LoginRoute
   '/orders': typeof OrdersRoute
+  '/payment-failure': typeof PaymentFailureRoute
+  '/payment-success': typeof PaymentSuccessRoute
   '/physiotherapy': typeof PhysiotherapyRoute
   '/prescription': typeof PrescriptionRoute
   '/products': typeof ProductsRoute
@@ -261,6 +277,8 @@ export interface FileRoutesById {
   '/lab-services': typeof LabServicesRoute
   '/login': typeof LoginRoute
   '/orders': typeof OrdersRoute
+  '/payment-failure': typeof PaymentFailureRoute
+  '/payment-success': typeof PaymentSuccessRoute
   '/physiotherapy': typeof PhysiotherapyRoute
   '/prescription': typeof PrescriptionRoute
   '/products': typeof ProductsRoute
@@ -294,6 +312,8 @@ export interface FileRouteTypes {
     | '/lab-services'
     | '/login'
     | '/orders'
+    | '/payment-failure'
+    | '/payment-success'
     | '/physiotherapy'
     | '/prescription'
     | '/products'
@@ -324,6 +344,8 @@ export interface FileRouteTypes {
     | '/lab-services'
     | '/login'
     | '/orders'
+    | '/payment-failure'
+    | '/payment-success'
     | '/physiotherapy'
     | '/prescription'
     | '/products'
@@ -355,6 +377,8 @@ export interface FileRouteTypes {
     | '/lab-services'
     | '/login'
     | '/orders'
+    | '/payment-failure'
+    | '/payment-success'
     | '/physiotherapy'
     | '/prescription'
     | '/products'
@@ -387,6 +411,8 @@ export interface RootRouteChildren {
   LabServicesRoute: typeof LabServicesRoute
   LoginRoute: typeof LoginRoute
   OrdersRoute: typeof OrdersRoute
+  PaymentFailureRoute: typeof PaymentFailureRoute
+  PaymentSuccessRoute: typeof PaymentSuccessRoute
   PhysiotherapyRoute: typeof PhysiotherapyRoute
   PrescriptionRoute: typeof PrescriptionRoute
   ProductsRoute: typeof ProductsRoute
@@ -446,6 +472,20 @@ declare module '@tanstack/react-router' {
       path: '/physiotherapy'
       fullPath: '/physiotherapy'
       preLoaderRoute: typeof PhysiotherapyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/payment-success': {
+      id: '/payment-success'
+      path: '/payment-success'
+      fullPath: '/payment-success'
+      preLoaderRoute: typeof PaymentSuccessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/payment-failure': {
+      id: '/payment-failure'
+      path: '/payment-failure'
+      fullPath: '/payment-failure'
+      preLoaderRoute: typeof PaymentFailureRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/orders': {
@@ -643,6 +683,8 @@ const rootRouteChildren: RootRouteChildren = {
   LabServicesRoute: LabServicesRoute,
   LoginRoute: LoginRoute,
   OrdersRoute: OrdersRoute,
+  PaymentFailureRoute: PaymentFailureRoute,
+  PaymentSuccessRoute: PaymentSuccessRoute,
   PhysiotherapyRoute: PhysiotherapyRoute,
   PrescriptionRoute: PrescriptionRoute,
   ProductsRoute: ProductsRoute,

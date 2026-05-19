@@ -12,7 +12,12 @@ const schema = z.object({
   SUPABASE_ANON_KEY: z.string().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   // URL of the frontend app — used to build the redirect URL in the magic link
-  FRONTEND_URL: z.string().url().default("http://localhost:8080")
+  FRONTEND_URL: z.string().url().default("http://localhost:8080"),
+  // eSewa payment gateway
+  ESEWA_SECRET_KEY: z.string().default("8gBm/:&EnhH.1/q"),
+  ESEWA_PRODUCT_CODE: z.string().default("EPAYTEST"),
+  ESEWA_SUCCESS_URL: z.string().optional(),
+  ESEWA_FAILURE_URL: z.string().optional(),
 });
 
 export const env = schema.parse(process.env);
