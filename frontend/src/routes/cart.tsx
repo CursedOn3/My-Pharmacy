@@ -160,6 +160,9 @@ function CartPage() {
                   </span>
                 </div>
               </div>
+              <p className="text-xs text-muted-foreground italic">
+                Delivery charge: NPR 100 inside city, NPR 200 outside city.
+              </p>
               <button
                 onClick={handleCheckout}
                 className="w-full bg-primary-deep text-primary-deep-foreground rounded-full py-3 font-semibold text-sm hover:scale-[1.02] transition-transform"
