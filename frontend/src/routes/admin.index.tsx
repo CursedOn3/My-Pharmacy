@@ -5,6 +5,7 @@ import {
   Boxes,
   BadgePercent,
   Stethoscope,
+  CalendarCheck,
   Users,
 } from "lucide-react";
 
@@ -54,6 +55,13 @@ const QUICK_ACTIONS = [
     label: "Health Services",
     desc: "Manage bookings & staff",
     bg: "bg-lavender",
+  },
+  {
+    to: "/admin/bookings",
+    icon: CalendarCheck,
+    label: "Service Bookings",
+    desc: "View & manage service orders",
+    bg: "bg-sun",
   }
 ] as const;
 

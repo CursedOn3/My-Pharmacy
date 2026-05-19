@@ -1,20 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import Header from "@/components/pharmacy/Header";
 import Footer from "@/components/pharmacy/Footer";
 import {
-  Droplet,
-  HeartPulse,
-  Activity,
-  ShieldCheck,
   TestTube,
-  Microscope,
-  Stethoscope,
+  HeartPulse,
+  ShieldCheck,
   Clock,
   CheckCircle2,
   CalendarClock,
   HomeIcon,
-  Beaker,
+  Microscope,
 } from "lucide-react";
+import { api, type ServiceDto } from "@/lib/api";
 
 export const Route = createFileRoute("/lab-services")({
   component: LabServicesPage,
@@ -36,72 +34,7 @@ export const Route = createFileRoute("/lab-services")({
   }),
 });
 
-const tests = [
-  {
-    icon: Droplet,
-    name: "Complete Blood Count (CBC)",
-    desc: "Screens for anaemia, infection and many other disorders.",
-    price: "$18",
-    turnaround: "Same day",
-    bg: "bg-mint",
-  },
-  {
-    icon: HeartPulse,
-    name: "Lipid Profile",
-    desc: "Total, HDL, LDL cholesterol and triglycerides for heart health.",
-    price: "$24",
-    turnaround: "24 hours",
-    bg: "bg-rose",
-  },
-  {
-    icon: Activity,
-    name: "Diabetes Panel (HbA1c + Fasting Glucose)",
-    desc: "Tracks 3-month sugar average — gold standard for diabetes care.",
-    price: "$29",
-    turnaround: "24 hours",
-    bg: "bg-sun",
-  },
-  {
-    icon: TestTube,
-    name: "Thyroid Profile (T3, T4, TSH)",
-    desc: "Detects hyper/hypothyroid conditions affecting energy & weight.",
-    price: "$32",
-    turnaround: "24 hours",
-    bg: "bg-peach",
-  },
-  {
-    icon: Beaker,
-    name: "Liver Function Test (LFT)",
-    desc: "Assesses liver health, enzymes, bilirubin and proteins.",
-    price: "$28",
-    turnaround: "24 hours",
-    bg: "bg-cream",
-  },
-  {
-    icon: ShieldCheck,
-    name: "Kidney Function Test (KFT)",
-    desc: "Creatinine, urea, uric acid & electrolytes — essential annual check.",
-    price: "$26",
-    turnaround: "24 hours",
-    bg: "bg-mint",
-  },
-  {
-    icon: Microscope,
-    name: "Vitamin D & B12 Panel",
-    desc: "Energy, bone & nerve health — most commonly deficient vitamins.",
-    price: "$34",
-    turnaround: "48 hours",
-    bg: "bg-sun",
-  },
-  {
-    icon: Stethoscope,
-    name: "Full Body Wellness Package",
-    desc: "75+ parameters incl. CBC, lipid, sugar, thyroid, liver & kidney.",
-    price: "$89",
-    turnaround: "48 hours",
-    bg: "bg-peach",
-  },
-];
+const BG_CYCLE = ["bg-mint", "bg-rose", "bg-sun", "bg-peach", "bg-cream"];
 
 const steps = [
   {
@@ -127,6 +60,16 @@ const steps = [
 ];
 
 function LabServicesPage() {
+  const [services, setServices] = useState<ServiceDto[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api
+      .listServices()
+      .then((data) => setServices(data.filter((s) => s.type === "lab")))
+      .finally(() => setLoading(false));
+  }, []);
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header />
@@ -209,48 +152,78 @@ function LabServicesPage() {
             </p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {tests.map((t) => (
-              <article
-                key={t.name}
-                className="bg-card border border-border rounded-3xl p-5 shadow-card flex flex-col gap-4"
-              >
-                <div className="flex items-start justify-between">
-                  <div
-                    className={`h-12 w-12 rounded-2xl ${t.bg} flex items-center justify-center`}
-                  >
-                    <t.icon className="h-6 w-6 text-primary-deep" />
-                  </div>
-                  <div className="text-right">
-                    <div className="font-display text-2xl font-extrabold text-primary-deep">
-                      {t.price}
+          {loading ? (
+            <div className="text-center py-12 text-muted-foreground">
+              Loading services...
+            </div>
+          ) : services.length === 0 ? (
+            <div className="bg-cream rounded-3xl p-10 text-center">
+              <p className="font-display text-lg font-extrabold text-primary-deep">
+                No lab tests available yet
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Check back soon — we're adding new tests regularly.
+              </p>
+            </div>
+          ) : (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {services.map((t, i) => (
+                <article
+                  key={t.id}
+                  className="bg-card border border-border rounded-3xl p-5 shadow-card flex flex-col gap-4"
+                >
+                  <div className="flex items-start justify-between">
+                    <div
+                      className={`h-12 w-12 rounded-2xl ${BG_CYCLE[i % BG_CYCLE.length]} flex items-center justify-center`}
+                    >
+                      <TestTube className="h-6 w-6 text-primary-deep" />
                     </div>
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                      starting at
+                    <div className="text-right">
+                      <div className="font-display text-2xl font-extrabold text-primary-deep">
+                        ${t.price}
+                      </div>
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                        starting at
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-display font-extrabold text-primary-deep text-lg leading-tight">
-                    {t.name}
-                  </h3>
-                  <p className="text-sm text-muted-foreground mt-1.5">{t.desc}</p>
-                </div>
-                <div className="flex items-center justify-between pt-2 border-t border-border">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-primary-deep/70">
-                    <Clock className="h-3.5 w-3.5" />
-                    {t.turnaround}
+                  <div className="flex-1">
+                    <h3 className="font-display font-extrabold text-primary-deep text-lg leading-tight">
+                      {t.name}
+                    </h3>
+                    {t.description && (
+                      <p className="text-sm text-muted-foreground mt-1.5">
+                        {t.description}
+                      </p>
+                    )}
                   </div>
-                  <Link
-                    to="/book-service"
-                    className="text-xs font-bold bg-primary-deep text-primary-deep-foreground px-3 py-1.5 rounded-full hover:opacity-90"
-                  >
-                    Book now
-                  </Link>
-                </div>
-              </article>
-            ))}
-          </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-border">
+                    <div className="flex items-center gap-3 text-xs font-semibold text-primary-deep/70">
+                      {t.duration && (
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3.5 w-3.5" />
+                          {t.duration}
+                        </span>
+                      )}
+                      {t.home_available && (
+                        <span className="flex items-center gap-1">
+                          <HomeIcon className="h-3.5 w-3.5" />
+                          Home
+                        </span>
+                      )}
+                    </div>
+                    <Link
+                      to="/book-service"
+                      search={{ serviceId: t.id }}
+                      className="text-xs font-bold bg-primary-deep text-primary-deep-foreground px-3 py-1.5 rounded-full hover:opacity-90"
+                    >
+                      Book now
+                    </Link>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* HOW IT WORKS */}
