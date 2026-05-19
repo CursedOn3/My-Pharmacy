@@ -24,6 +24,7 @@ import {
   Download,
   Trash2,
   TestTube,
+  CalendarCheck,
 } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard")({
@@ -306,8 +307,9 @@ function AdminDashboard() {
 
         <Card className="lg:col-span-3">
           <CardHeader title="Quick admin actions" />
-          <div className="grid sm:grid-cols-3 md:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <QuickAction to="/admin/services" icon={TestTube} label="Services" desc="Lab & physio" bg="bg-mint" />
+            <QuickAction to="/admin/bookings" icon={CalendarCheck} label="Bookings" desc="Service orders" bg="bg-lavender" />
             <QuickAction to="/admin/orders" icon={Package} label="All orders" desc="Manage shipments" bg="bg-sun" />
             <QuickAction to="/admin/prescriptions" icon={FileText} label="Review Rx" desc="Approve / reject" bg="bg-peach" />
             <QuickAction to="/admin/customers" icon={Users} label="Customers" desc="Manage accounts" bg="bg-cream" />
@@ -409,7 +411,8 @@ function QuickAction({
     | "/admin/customers"
     | "/admin/inventory"
     | "/admin/marketing"
-    | "/admin/services";
+    | "/admin/services"
+    | "/admin/bookings";
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   desc: string;
