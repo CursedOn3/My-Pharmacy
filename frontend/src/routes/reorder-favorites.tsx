@@ -240,7 +240,7 @@ function ReorderFavoritesPage() {
               <div className="border-t border-border pt-2">
                 <Row
                   label="Subtotal"
-                  value={`$${summary.subtotal.toFixed(2)}`}
+                  value={`NPR ${summary.subtotal.toFixed(2)}`}
                   bold
                 />
               </div>

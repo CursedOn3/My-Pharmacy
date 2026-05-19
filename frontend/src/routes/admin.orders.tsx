@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useStore, type OrderStatus } from "@/context/StoreContext";
+import { api } from "@/lib/api";
 import {
   Package,
   Search,
@@ -46,6 +47,18 @@ function AdminOrdersPage() {
   const [filter, setFilter] = useState<"All" | OrderStatus>("All");
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [serviceRevenue, setServiceRevenue] = useState(0);
+
+  useEffect(() => {
+    Promise.all([api.adminListBookings(), api.adminListServices()])
+      .then(([bookings, services]) => {
+        const priceMap = new Map(services.map((s) => [s.id, s.price]));
+        const completed = bookings.filter((b) => b.status === "completed");
+        const total = completed.reduce((s, b) => s + (priceMap.get(b.service_id) ?? 0), 0);
+        setServiceRevenue(total);
+      })
+      .catch(() => {});
+  }, []);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -62,9 +75,10 @@ function AdminOrdersPage() {
 
   const stats = useMemo(() => {
     const total = orders.length;
-    const revenue = orders
+    const orderRevenue = orders
       .filter((o) => o.status !== "Cancelled")
       .reduce((s, o) => s + o.total, 0);
+    const revenue = orderRevenue + serviceRevenue;
     const pending = orders.filter(
       (o) => o.status === "Pending" || o.status === "Processing",
     ).length;
@@ -72,7 +86,7 @@ function AdminOrdersPage() {
       (o) => new Date(o.createdAt).toDateString() === new Date().toDateString(),
     ).length;
     return { total, revenue, pending, today };
-  }, [orders]);
+  }, [orders, serviceRevenue]);
 
   return (
     <div className="space-y-5">
@@ -83,7 +97,7 @@ function AdminOrdersPage() {
         <Stat
           icon={DollarSign}
           label="Revenue"
-          value={`$${stats.revenue.toFixed(2)}`}
+          value={`NPR ${stats.revenue.toFixed(2)}`}
           bg="bg-rose"
         />
       </div>
@@ -167,7 +181,7 @@ function AdminOrdersPage() {
                         {o.lines.reduce((s, l) => s + l.qty, 0)}
                       </td>
                       <td className="py-3 px-2 font-bold text-primary-deep">
-                        ${o.total.toFixed(2)}
+                        NPR {o.total.toFixed(2)}
                       </td>
                       <td className="py-3 px-2">
                         <span
@@ -231,11 +245,11 @@ function AdminOrdersPage() {
                                       {l.name}
                                     </div>
                                     <div className="text-xs text-muted-foreground">
-                                      ${l.unitPrice.toFixed(2)} × {l.qty}
+                                      NPR {l.unitPrice.toFixed(2)} × {l.qty}
                                     </div>
                                   </div>
                                   <div className="text-sm font-bold text-primary-deep">
-                                    ${(l.unitPrice * l.qty).toFixed(2)}
+                                    NPR {(l.unitPrice * l.qty).toFixed(2)}
                                   </div>
                                 </div>
                               ))}
@@ -244,19 +258,19 @@ function AdminOrdersPage() {
                               <span>
                                 Subtotal:{" "}
                                 <span className="font-semibold text-primary-deep">
-                                  ${o.subtotal.toFixed(2)}
+                                  NPR {o.subtotal.toFixed(2)}
                                 </span>
                               </span>
                               <span>
                                 Shipping:{" "}
                                 <span className="font-semibold text-primary-deep">
-                                  ${o.shipping.toFixed(2)}
+                                  NPR {o.shipping.toFixed(2)}
                                 </span>
                               </span>
                               <span>
                                 Total:{" "}
                                 <span className="font-bold text-primary-deep">
-                                  ${o.total.toFixed(2)}
+                                  NPR {o.total.toFixed(2)}
                                 </span>
                               </span>
                             </div>

@@ -10,12 +10,14 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.warn("Missing Supabase env vars: VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY");
 }
 
+const isServer = typeof window === "undefined";
+
 export const supabase = createClient(supabaseUrl ?? "", supabaseAnonKey ?? "", {
   auth: {
-    persistSession: true,
-    autoRefreshToken: true,
+    persistSession: !isServer,
+    autoRefreshToken: !isServer,
     storageKey: "medicare-auth",
-    storage: localStorage,
-    detectSessionInUrl: true,
+    ...(isServer ? {} : { storage: window.localStorage }),
+    detectSessionInUrl: !isServer,
   }
 });

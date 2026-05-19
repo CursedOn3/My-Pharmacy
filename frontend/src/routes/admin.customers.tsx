@@ -48,13 +48,13 @@ function AdminCustomersPage() {
         <Stat
           icon={DollarSign}
           label="Total spent (all-time)"
-          value={`$${totals.totalSpent.toFixed(2)}`}
+          value={`NPR ${totals.totalSpent.toFixed(2)}`}
           bg="bg-sun"
         />
         <Stat
           icon={ShoppingBag}
           label="Average order"
-          value={`$${totals.avgOrderValue.toFixed(2)}`}
+          value={`NPR ${totals.avgOrderValue.toFixed(2)}`}
           bg="bg-peach"
         />
       </div>
@@ -125,7 +125,7 @@ function AdminCustomersPage() {
                       {c.totalOrders}
                     </td>
                     <td className="py-3 px-2 font-bold text-primary-deep">
-                      ${c.totalSpent.toFixed(2)}
+                      NPR {c.totalSpent.toFixed(2)}
                     </td>
                     <td className="py-3 px-2 text-xs text-muted-foreground">
                       {c.lastOrderAt

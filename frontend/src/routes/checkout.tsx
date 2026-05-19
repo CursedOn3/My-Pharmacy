@@ -186,16 +186,16 @@ function CheckoutPage() {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between text-primary-deep/80">
                   <span>Subtotal</span>
-                  <span className="font-semibold">${subtotal.toFixed(2)}</span>
+                  <span className="font-semibold">NPR {subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-primary-deep/80">
                   <span>2-hour delivery</span>
-                  <span className="font-semibold">${shipping.toFixed(2)}</span>
+                  <span className="font-semibold">NPR {shipping.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-primary-deep pt-2 border-t border-border">
                   <span className="font-bold">Total</span>
                   <span className="font-display font-extrabold text-xl">
-                    ${total.toFixed(2)}
+                    NPR {total.toFixed(2)}
                   </span>
                 </div>
               </div>

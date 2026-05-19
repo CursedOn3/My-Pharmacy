@@ -13,7 +13,7 @@ export const parsePrice = (price: string): number =>
   Number(String(price).replace(/[^0-9.]/g, "")) || 0;
 
 /**
- * Formats a number as a USD price string.
- * e.g. 12.99 → "$12.99"
+ * Formats a number as an NPR price string.
+ * e.g. 12.99 → "NPR 12.99"
  */
-export const toPrice = (value: number): string => `$${value.toFixed(2)}`;
+export const toPrice = (value: number): string => `NPR ${value.toFixed(2)}`;

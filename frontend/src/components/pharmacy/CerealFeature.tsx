@@ -28,7 +28,7 @@ const CerealFeature = () => {
             )}
           </ul>
           <button className="inline-flex items-center gap-2 bg-primary-deep text-primary-deep-foreground px-6 py-3 rounded-full text-sm font-semibold">
-            Buy now — $9.99 <ArrowRight className="h-4 w-4" />
+            Buy now — NPR 9.99 <ArrowRight className="h-4 w-4" />
           </button>
         </div>
         <div className="relative">
