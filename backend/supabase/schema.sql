@@ -125,4 +125,41 @@ for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "Wishlist is user scoped" on public.wishlist
 for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+-- Services (lab tests & physiotherapy)
+create table if not exists public.services (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  type text not null check (type in ('lab', 'physiotherapy')),
+  description text,
+  price numeric(10, 2) not null,
+  duration text,
+  home_available boolean not null default false,
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.bookings (
+  id uuid primary key default gen_random_uuid(),
+  service_id uuid not null references public.services(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  visit_type text not null check (visit_type in ('home', 'clinic')),
+  preferred_date text not null,
+  preferred_time text not null,
+  customer_name text not null,
+  customer_email text not null,
+  customer_phone text not null,
+  notes text,
+  status text not null default 'pending',
+  created_at timestamptz not null default now()
+);
+
+alter table public.services enable row level security;
+alter table public.bookings enable row level security;
+
+create policy "Services are public readable" on public.services
+for select using (true);
+
+create policy "Bookings are user scoped" on public.bookings
+for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
 -- Marketing tables are admin-managed via service role

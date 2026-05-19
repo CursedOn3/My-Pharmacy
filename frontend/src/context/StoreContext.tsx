@@ -89,6 +89,7 @@ type StoreCtx = {
     lines: { productName: string; qty: number }[];
     shipping: number;
   }) => Promise<Order | null>;
+  cancelOrder: (id: string) => Promise<void>;
   updateOrderStatus: (id: string, status: OrderStatus) => Promise<void>;
 
   // prescriptions
@@ -228,8 +229,28 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const loadInventory = useCallback(async () => {
-    const data = await api.listProducts();
-    setInventory(data.map(fromDto));
+    const [products, discounts] = await Promise.all([
+      api.listProducts(),
+      api.listActiveDiscounts().catch(() => [] as { product_id: string; percent: number }[])
+    ]);
+    const discountMap = new Map(discounts.map((d) => [d.product_id, d.percent]));
+    setInventory(
+      products.map((dto) => {
+        const item = fromDto(dto);
+        const pct = discountMap.get(dto.id);
+        if (pct && pct > 0) {
+          const originalPrice = parsePrice(item.price);
+          const discountedPrice = originalPrice * (1 - pct / 100);
+          return {
+            ...item,
+            oldPrice: item.price,
+            price: toPrice(discountedPrice),
+            discount: `${pct}%`
+          };
+        }
+        return item;
+      })
+    );
   }, []);
 
   const loadOrders = useCallback(async () => {
@@ -393,6 +414,16 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     [inventoryByName, mapOrder]
   );
 
+  const cancelOrder: StoreCtx["cancelOrder"] = useCallback(
+    async (id) => {
+      await api.cancelOrder(id);
+      setOrders((prev) =>
+        prev.map((o) => (o.id === id ? { ...o, status: "Cancelled" as OrderStatus } : o))
+      );
+    },
+    []
+  );
+
   const updateOrderStatus: StoreCtx["updateOrderStatus"] = useCallback(
     async (id, status) => {
       await api.adminUpdateOrder(id, status);
@@ -498,6 +529,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       deleteProduct,
       getStock,
       createOrder,
+      cancelOrder,
       updateOrderStatus,
       addPrescription,
       updatePrescription
@@ -515,6 +547,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       deleteProduct,
       getStock,
       createOrder,
+      cancelOrder,
       updateOrderStatus,
       addPrescription,
       updatePrescription
