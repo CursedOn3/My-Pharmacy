@@ -202,7 +202,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         };
       });
       const subtotal = lines.reduce((s, l) => s + l.unitPrice * l.qty, 0);
-      const shipping = lines.length > 0 ? 4.99 : 0;
+      const shipping = dto.shipping ?? 0;
       return {
         id: dto.id,
         customerEmail: dto.customer_email,
@@ -405,6 +405,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         customer_email: customerEmail,
         customer_name: customerName,
         payment_method: paymentMethod ?? "cod",
+        shipping,
       });
 
       const order = mapOrder(dto);
