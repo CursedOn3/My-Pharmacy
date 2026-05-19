@@ -66,6 +66,7 @@ function CheckoutPage() {
         customerName: user.name,
         lines: items.map((i) => ({ productName: i.name, qty: i.qty })),
         shipping,
+        paymentMethod,
       });
     } catch {
       toast.error("Checkout failed", {

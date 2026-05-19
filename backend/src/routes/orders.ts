@@ -17,7 +17,8 @@ const createSchema = z.object({
     .min(1),
   customer_email: z.string().email(),
   customer_name: z.string().min(1),
-  notes: z.string().optional()
+  notes: z.string().optional(),
+  payment_method: z.enum(["esewa", "cod"]).default("cod"),
 });
 
 router.get("/", requireAuth, async (req, res, next) => {
@@ -63,15 +64,16 @@ router.post("/", requireAuth, async (req, res, next) => {
       unit_price: priceMap.get(item.product_id) ?? 0
     }));
 
-    const client = res.locals.userClient;
-    const { data, error } = await client
+    const { data, error } = await serviceClient
       .from("orders")
       .insert({
         items: itemsWithPrice,
         customer_email: payload.customer_email,
         customer_name: payload.customer_name,
         notes: payload.notes ?? null,
-        user_id: req.user!.id
+        user_id: req.user!.id,
+        payment_method: payload.payment_method,
+        payment_status: payload.payment_method === "cod" ? "cod" : "pending",
       })
       .select("*")
       .single();
