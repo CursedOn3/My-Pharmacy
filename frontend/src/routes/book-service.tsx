@@ -1,5 +1,7 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
+import { z } from "zod";
 import {
   TestTube,
   Activity,
@@ -16,7 +18,12 @@ import { useAuth } from "@/context/AuthContext";
 import { api, type ServiceDto } from "@/lib/api";
 import { toast } from "sonner";
 
+const searchSchema = z.object({
+  serviceId: fallback(z.string(), "").default(""),
+});
+
 export const Route = createFileRoute("/book-service")({
+  validateSearch: zodValidator(searchSchema),
   component: BookServicePage,
   head: () => ({
     meta: [
@@ -35,6 +42,7 @@ type Step = "select" | "details" | "confirm";
 function BookServicePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { serviceId } = useSearch({ from: "/book-service" });
   const [services, setServices] = useState<ServiceDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [step, setStep] = useState<Step>("select");
@@ -51,10 +59,20 @@ function BookServicePage() {
   useEffect(() => {
     api
       .listServices()
-      .then(setServices)
+      .then((data) => {
+        setServices(data);
+        if (serviceId) {
+          const match = data.find((s) => s.id === serviceId);
+          if (match) {
+            setSelectedService(match);
+            if (!match.home_available) setVisitType("clinic");
+            setStep("details");
+          }
+        }
+      })
       .catch(() => toast.error("Failed to load services"))
       .finally(() => setLoading(false));
-  }, []);
+  }, [serviceId]);
 
   const filtered =
     filter === "all" ? services : services.filter((s) => s.type === filter);

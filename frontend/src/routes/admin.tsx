@@ -14,6 +14,7 @@ import {
   Boxes,
   BadgePercent,
   Stethoscope,
+  CalendarCheck,
   ShieldAlert,
 } from "lucide-react";
 
@@ -35,6 +36,7 @@ const NAV = [
   { to: "/admin/inventory", label: "Inventory", icon: Boxes },
   { to: "/admin/marketing", label: "Discounts & banners", icon: BadgePercent },
   { to: "/admin/services", label: "Services", icon: Stethoscope },
+  { to: "/admin/bookings", label: "Bookings", icon: CalendarCheck },
 ] as const;
 
 function AdminLayout() {

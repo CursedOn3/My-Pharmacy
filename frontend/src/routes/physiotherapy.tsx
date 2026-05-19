@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import Header from "@/components/pharmacy/Header";
 import Footer from "@/components/pharmacy/Footer";
 import {
@@ -9,14 +10,8 @@ import {
   CheckCircle2,
   CalendarClock,
   HomeIcon,
-  Bone,
-  Baby,
-  Brain,
-  Dumbbell,
-  Footprints,
-  Hand,
-  Stethoscope,
 } from "lucide-react";
+import { api, type ServiceDto } from "@/lib/api";
 
 export const Route = createFileRoute("/physiotherapy")({
   component: PhysiotherapyPage,
@@ -38,72 +33,7 @@ export const Route = createFileRoute("/physiotherapy")({
   }),
 });
 
-const services = [
-  {
-    icon: Bone,
-    name: "Orthopedic Physiotherapy",
-    desc: "Recovery from fractures, joint pain, arthritis and posture issues.",
-    price: "$25",
-    duration: "45 min",
-    bg: "bg-mint",
-  },
-  {
-    icon: Dumbbell,
-    name: "Sports Injury Rehab",
-    desc: "Targeted recovery for ligament tears, sprains and overuse injuries.",
-    price: "$30",
-    duration: "45 min",
-    bg: "bg-rose",
-  },
-  {
-    icon: Brain,
-    name: "Neurological Rehab",
-    desc: "Stroke, Parkinson's & spinal recovery with neuro-specialist therapists.",
-    price: "$35",
-    duration: "60 min",
-    bg: "bg-sun",
-  },
-  {
-    icon: HeartPulse,
-    name: "Post-Surgery Recovery",
-    desc: "Structured rehab after knee, hip or cardiac surgery — faster healing.",
-    price: "$32",
-    duration: "60 min",
-    bg: "bg-peach",
-  },
-  {
-    icon: Footprints,
-    name: "Geriatric Physiotherapy",
-    desc: "Mobility, balance and fall prevention programs for elderly care.",
-    price: "$28",
-    duration: "45 min",
-    bg: "bg-cream",
-  },
-  {
-    icon: Baby,
-    name: "Pediatric Physiotherapy",
-    desc: "Developmental therapy for infants and children with motor concerns.",
-    price: "$30",
-    duration: "45 min",
-    bg: "bg-mint",
-  },
-  {
-    icon: Hand,
-    name: "Chronic Pain Management",
-    desc: "Back, neck, shoulder & knee pain relief with manual therapy & dry needling.",
-    price: "$26",
-    duration: "45 min",
-    bg: "bg-sun",
-  },
-  {
-    icon: Stethoscope,
-    name: "Cardio-Pulmonary Therapy",
-    desc: "Breathing exercises and conditioning post-COVID, COPD or cardiac events.",
-    price: "$30",
-    duration: "45 min",
-    bg: "bg-peach",
-  },
-];
+const BG_CYCLE = ["bg-mint", "bg-rose", "bg-sun", "bg-peach", "bg-cream"];
 
 const steps = [
   {
@@ -129,6 +59,16 @@ const steps = [
 ];
 
 function PhysiotherapyPage() {
+  const [services, setServices] = useState<ServiceDto[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api
+      .listServices()
+      .then((data) => setServices(data.filter((s) => s.type === "physiotherapy")))
+      .finally(() => setLoading(false));
+  }, []);
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header />
@@ -211,48 +151,78 @@ function PhysiotherapyPage() {
             </p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {services.map((s) => (
-              <article
-                key={s.name}
-                className="bg-card border border-border rounded-3xl p-5 shadow-card flex flex-col gap-4"
-              >
-                <div className="flex items-start justify-between">
-                  <div
-                    className={`h-12 w-12 rounded-2xl ${s.bg} flex items-center justify-center`}
-                  >
-                    <s.icon className="h-6 w-6 text-primary-deep" />
-                  </div>
-                  <div className="text-right">
-                    <div className="font-display text-2xl font-extrabold text-primary-deep">
-                      {s.price}
+          {loading ? (
+            <div className="text-center py-12 text-muted-foreground">
+              Loading services...
+            </div>
+          ) : services.length === 0 ? (
+            <div className="bg-cream rounded-3xl p-10 text-center">
+              <p className="font-display text-lg font-extrabold text-primary-deep">
+                No physiotherapy services available yet
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Check back soon — we're adding new services regularly.
+              </p>
+            </div>
+          ) : (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {services.map((s, i) => (
+                <article
+                  key={s.id}
+                  className="bg-card border border-border rounded-3xl p-5 shadow-card flex flex-col gap-4"
+                >
+                  <div className="flex items-start justify-between">
+                    <div
+                      className={`h-12 w-12 rounded-2xl ${BG_CYCLE[i % BG_CYCLE.length]} flex items-center justify-center`}
+                    >
+                      <Activity className="h-6 w-6 text-primary-deep" />
                     </div>
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                      per session
+                    <div className="text-right">
+                      <div className="font-display text-2xl font-extrabold text-primary-deep">
+                        ${s.price}
+                      </div>
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                        per session
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-display font-extrabold text-primary-deep text-lg leading-tight">
-                    {s.name}
-                  </h3>
-                  <p className="text-sm text-muted-foreground mt-1.5">{s.desc}</p>
-                </div>
-                <div className="flex items-center justify-between pt-2 border-t border-border">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-primary-deep/70">
-                    <Clock className="h-3.5 w-3.5" />
-                    {s.duration}
+                  <div className="flex-1">
+                    <h3 className="font-display font-extrabold text-primary-deep text-lg leading-tight">
+                      {s.name}
+                    </h3>
+                    {s.description && (
+                      <p className="text-sm text-muted-foreground mt-1.5">
+                        {s.description}
+                      </p>
+                    )}
                   </div>
-                  <Link
-                    to="/book-service"
-                    className="text-xs font-bold bg-primary-deep text-primary-deep-foreground px-3 py-1.5 rounded-full hover:opacity-90"
-                  >
-                    Book now
-                  </Link>
-                </div>
-              </article>
-            ))}
-          </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-border">
+                    <div className="flex items-center gap-3 text-xs font-semibold text-primary-deep/70">
+                      {s.duration && (
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3.5 w-3.5" />
+                          {s.duration}
+                        </span>
+                      )}
+                      {s.home_available && (
+                        <span className="flex items-center gap-1">
+                          <HomeIcon className="h-3.5 w-3.5" />
+                          Home
+                        </span>
+                      )}
+                    </div>
+                    <Link
+                      to="/book-service"
+                      search={{ serviceId: s.id }}
+                      className="text-xs font-bold bg-primary-deep text-primary-deep-foreground px-3 py-1.5 rounded-full hover:opacity-90"
+                    >
+                      Book now
+                    </Link>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* HOW IT WORKS */}
