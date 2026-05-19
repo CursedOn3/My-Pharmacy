@@ -1,14 +1,15 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { CreditCard, ShieldCheck, Truck, Wallet } from "lucide-react";
+import { ShieldCheck, Truck, Wallet } from "lucide-react";
 import Header from "@/components/pharmacy/Header";
 import Footer from "@/components/pharmacy/Footer";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { useStore } from "@/context/StoreContext";
+import { api } from "@/lib/api";
 
-type PaymentMethod = "card" | "upi" | "wallet" | "cod";
+type PaymentMethod = "esewa" | "cod";
 
 export const Route = createFileRoute("/checkout")({
   component: CheckoutPage,
@@ -28,13 +29,17 @@ function CheckoutPage() {
   const { user } = useAuth();
   const { createOrder } = useStore();
   const navigate = useNavigate();
+  const formRef = useRef<HTMLFormElement>(null);
 
-  const shipping = items.length > 0 ? 4.99 : 0;
+  const shipping = items.length > 0 ? 100 : 0;
   const total = subtotal + shipping;
 
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("esewa");
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
+  const [processing, setProcessing] = useState(false);
+
+  const [esewaFields, setEsewaFields] = useState<Record<string, string> | null>(null);
 
   const handlePlaceOrder = async () => {
     if (!user) {
@@ -52,6 +57,8 @@ function CheckoutPage() {
       return;
     }
 
+    setProcessing(true);
+
     let order = null;
     try {
       order = await createOrder({
@@ -60,10 +67,11 @@ function CheckoutPage() {
         lines: items.map((i) => ({ productName: i.name, qty: i.qty })),
         shipping,
       });
-    } catch (err) {
+    } catch {
       toast.error("Checkout failed", {
         description: "Please try again in a moment.",
       });
+      setProcessing(false);
       return;
     }
 
@@ -71,16 +79,43 @@ function CheckoutPage() {
       toast.error("Some items are out of stock", {
         description: "Please review your cart.",
       });
+      setProcessing(false);
       navigate({ to: "/cart" });
       return;
     }
 
-    clear();
-    toast.success(`Order ${order.id} placed via ${paymentMethod.toUpperCase()}!`, {
-      description: "We'll start preparing it right away.",
-    });
-    navigate({ to: "/orders" });
+    if (paymentMethod === "cod") {
+      clear();
+      toast.success(`Order ${order.id} placed! Pay on delivery.`);
+      navigate({ to: "/orders" });
+      return;
+    }
+
+    try {
+      const paymentData = await api.initiateEsewaPayment({
+        order_id: order.id,
+        amount: subtotal,
+        tax_amount: 0,
+        delivery_charge: shipping,
+      });
+
+      setEsewaFields(paymentData);
+      clear();
+
+      setTimeout(() => {
+        formRef.current?.submit();
+      }, 100);
+    } catch {
+      toast.error("Failed to initiate payment. Order placed as COD.");
+      clear();
+      navigate({ to: "/orders" });
+    }
   };
+
+  const esewaUrl =
+    import.meta.env.VITE_ESEWA_ENV === "production"
+      ? "https://epay.esewa.com.np/api/epay/main/v2/form"
+      : "https://rc-epay.esewa.com.np/api/epay/main/v2/form";
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -93,7 +128,7 @@ function CheckoutPage() {
           Complete your order with your preferred payment option.
         </p>
 
-        {items.length === 0 ? (
+        {items.length === 0 && !esewaFields ? (
           <div className="bg-cream rounded-[2rem] p-10 text-center space-y-4">
             <h2 className="font-display text-2xl font-extrabold text-primary-deep">
               No items to checkout
@@ -144,29 +179,15 @@ function CheckoutPage() {
 
               <div className="bg-card border border-border rounded-2xl p-5">
                 <h2 className="font-display text-xl font-extrabold text-primary-deep mb-4">
-                  Payment options
+                  Payment method
                 </h2>
                 <div className="grid sm:grid-cols-2 gap-3">
                   <PaymentOption
-                    active={paymentMethod === "card"}
-                    onClick={() => setPaymentMethod("card")}
-                    icon={<CreditCard className="h-4 w-4" />}
-                    title="Card payment"
-                    subtitle="Visa, MasterCard, Rupay"
-                  />
-                  <PaymentOption
-                    active={paymentMethod === "upi"}
-                    onClick={() => setPaymentMethod("upi")}
+                    active={paymentMethod === "esewa"}
+                    onClick={() => setPaymentMethod("esewa")}
                     icon={<Wallet className="h-4 w-4" />}
-                    title="UPI"
-                    subtitle="PhonePe, GPay, Paytm"
-                  />
-                  <PaymentOption
-                    active={paymentMethod === "wallet"}
-                    onClick={() => setPaymentMethod("wallet")}
-                    icon={<Wallet className="h-4 w-4" />}
-                    title="Wallet"
-                    subtitle="Fast one-tap payment"
+                    title="eSewa"
+                    subtitle="Pay via eSewa wallet"
                   />
                   <PaymentOption
                     active={paymentMethod === "cod"}
@@ -189,7 +210,7 @@ function CheckoutPage() {
                   <span className="font-semibold">NPR {subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-primary-deep/80">
-                  <span>2-hour delivery</span>
+                  <span>Delivery</span>
                   <span className="font-semibold">NPR {shipping.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-primary-deep pt-2 border-t border-border">
@@ -204,9 +225,14 @@ function CheckoutPage() {
               </p>
               <button
                 onClick={handlePlaceOrder}
-                className="w-full bg-primary-deep text-primary-deep-foreground rounded-full py-3 font-semibold text-sm hover:scale-[1.02] transition-transform"
+                disabled={processing}
+                className="w-full bg-primary-deep text-primary-deep-foreground rounded-full py-3 font-semibold text-sm hover:scale-[1.02] transition-transform disabled:opacity-50"
               >
-                Place order
+                {processing
+                  ? "Processing..."
+                  : paymentMethod === "esewa"
+                    ? "Pay with eSewa"
+                    : "Place order"}
               </button>
               <ul className="text-xs text-primary-deep/70 space-y-1.5 pt-2">
                 <li className="flex items-center gap-2">
@@ -221,6 +247,27 @@ function CheckoutPage() {
         )}
       </main>
       <Footer />
+
+      {esewaFields && (
+        <form
+          ref={formRef}
+          action={esewaUrl}
+          method="POST"
+          style={{ display: "none" }}
+        >
+          <input name="amount" value={esewaFields.amount} readOnly />
+          <input name="tax_amount" value={esewaFields.tax_amount} readOnly />
+          <input name="product_service_charge" value={esewaFields.product_service_charge} readOnly />
+          <input name="product_delivery_charge" value={esewaFields.product_delivery_charge} readOnly />
+          <input name="total_amount" value={esewaFields.total_amount} readOnly />
+          <input name="transaction_uuid" value={esewaFields.transaction_uuid} readOnly />
+          <input name="product_code" value={esewaFields.product_code} readOnly />
+          <input name="signed_field_names" value={esewaFields.signed_field_names} readOnly />
+          <input name="signature" value={esewaFields.signature} readOnly />
+          <input name="success_url" value={esewaFields.success_url} readOnly />
+          <input name="failure_url" value={esewaFields.failure_url} readOnly />
+        </form>
+      )}
     </div>
   );
 }

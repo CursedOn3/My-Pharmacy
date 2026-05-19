@@ -99,6 +99,20 @@ type MarketingBanner = {
   created_at: string;
 };
 
+type EsewaPaymentData = {
+  amount: string;
+  tax_amount: string;
+  product_service_charge: string;
+  product_delivery_charge: string;
+  total_amount: string;
+  transaction_uuid: string;
+  product_code: string;
+  signed_field_names: string;
+  signature: string;
+  success_url: string;
+  failure_url: string;
+};
+
 const getAccessToken = async () => {
   const { data } = await supabase.auth.getSession();
   return data.session?.access_token ?? null;
@@ -417,6 +431,20 @@ export const api = {
     const res = await apiFetch<ApiResponse<BookingDto>>(`/admin/bookings/${id}`, {
       method: "PATCH",
       body: JSON.stringify({ status })
+    }, true);
+    return res.data;
+  },
+  async initiateEsewaPayment(input: { order_id: string; amount: number; tax_amount?: number; delivery_charge?: number }) {
+    const res = await apiFetch<ApiResponse<EsewaPaymentData>>("/payments/initiate", {
+      method: "POST",
+      body: JSON.stringify(input)
+    }, true);
+    return res.data;
+  },
+  async verifyEsewaPayment(encoded_response: string) {
+    const res = await apiFetch<ApiResponse<{ status: string; transaction_uuid: string; order_id: string }>>("/payments/verify", {
+      method: "POST",
+      body: JSON.stringify({ encoded_response })
     }, true);
     return res.data;
   }
