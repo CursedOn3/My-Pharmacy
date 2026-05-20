@@ -299,6 +299,13 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [loadInventory, loadOrders, loadPrescriptions]);
 
+  // Refetch inventory on window focus for all users (picks up stock changes)
+  useEffect(() => {
+    const onFocus = () => void loadInventory();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [loadInventory]);
+
   // Admin polling — debounced with a 500 ms guard and proper cleanup
   const pollingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingPollRef = useRef(false);
@@ -312,7 +319,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       if (pollingTimerRef.current) clearTimeout(pollingTimerRef.current);
       pollingTimerRef.current = setTimeout(() => {
         pendingPollRef.current = false;
-        void loadOrders();
+        void Promise.all([loadOrders(), loadInventory()]);
       }, 500);
     };
 
@@ -328,7 +335,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       window.removeEventListener("focus", debouncedLoad);
       if (pollingTimerRef.current) clearTimeout(pollingTimerRef.current);
     };
-  }, [loadOrders, user]);
+  }, [loadOrders, loadInventory, user]);
 
   /* ----------------------------- inventory ---------------------------- */
 
