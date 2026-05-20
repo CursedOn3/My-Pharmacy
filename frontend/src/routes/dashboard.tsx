@@ -26,6 +26,7 @@ import {
   Trash2,
   TestTube,
   CalendarCheck,
+  Image,
 } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard")({
@@ -328,12 +329,13 @@ function AdminDashboard() {
           <CardHeader title="Quick admin actions" />
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <QuickAction to="/admin/services" icon={TestTube} label="Services" desc="Lab & physio" bg="bg-mint" />
-            <QuickAction to="/admin/bookings" icon={CalendarCheck} label="Bookings" desc="Service orders" bg="bg-lavender" />
+            <QuickAction to="/admin/bookings" icon={CalendarCheck} label="Bookings" desc="Service orders" bg="bg-peach" />
             <QuickAction to="/admin/orders" icon={Package} label="All orders" desc="Manage shipments" bg="bg-sun" />
-            <QuickAction to="/admin/prescriptions" icon={FileText} label="Review Rx" desc="Approve / reject" bg="bg-peach" />
+            <QuickAction to="/admin/prescriptions" icon={FileText} label="Review Rx" desc="Approve / reject" bg="bg-cream" />
             <QuickAction to="/admin/customers" icon={Users} label="Customers" desc="Manage accounts" bg="bg-cream" />
             <QuickAction to="/admin/inventory" icon={CheckCircle2} label="Inventory" desc="Stock & catalog" bg="bg-rose" />
-            <QuickAction to="/admin/marketing" icon={BadgePercent} label="Discounts & banners" desc="Manage promos" bg="bg-mint" />
+            <QuickAction to="/admin/banners" icon={Image} label="Manage Banners" desc="Upload & edit banners" bg="bg-rose" />
+            <QuickAction to="/admin/marketing" icon={BadgePercent} label="Discounts" desc="Manage promos" bg="bg-mint" />
           </div>
         </Card>
       </div>
@@ -431,7 +433,8 @@ function QuickAction({
     | "/admin/inventory"
     | "/admin/marketing"
     | "/admin/services"
-    | "/admin/bookings";
+    | "/admin/bookings"
+    | "/admin/banners";
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   desc: string;
