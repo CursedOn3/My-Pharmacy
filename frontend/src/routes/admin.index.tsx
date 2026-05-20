@@ -7,6 +7,7 @@ import {
   Stethoscope,
   CalendarCheck,
   Users,
+  Image,
 } from "lucide-react";
 
 export const Route = createFileRoute("/admin/")({
@@ -34,6 +35,13 @@ const QUICK_ACTIONS = [
     label: "Inventory",
     desc: "Add & edit products",
     bg: "bg-cream",
+  },
+  {
+    to: "/admin/banners",
+    icon: Image,
+    label: "Banners",
+    desc: "Change banner info & images",
+    bg: "bg-lavender",
   },
   {
     to: "/admin/marketing",

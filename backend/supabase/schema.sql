@@ -80,6 +80,8 @@ create table if not exists public.marketing_discounts (
 create table if not exists public.marketing_banners (
   id uuid primary key default gen_random_uuid(),
   title text not null,
+  description text,
+  image_url text,
   placement text not null,
   active boolean not null default true,
   created_at timestamptz not null default now()
@@ -161,5 +163,11 @@ for select using (true);
 
 create policy "Bookings are user scoped" on public.bookings
 for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- Migration: add description and image_url to marketing_banners (safe to run on existing DBs)
+alter table public.marketing_banners
+  add column if not exists description text;
+alter table public.marketing_banners
+  add column if not exists image_url text;
 
 -- Marketing tables are admin-managed via service role

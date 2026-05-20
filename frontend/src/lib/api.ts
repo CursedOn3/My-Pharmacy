@@ -97,6 +97,8 @@ type MarketingDiscount = {
 type MarketingBanner = {
   id: string;
   title: string;
+  description: string | null;
+  image_url: string | null;
   placement: "home" | "products" | "checkout";
   active: boolean;
   created_at: string;
@@ -362,7 +364,7 @@ export const api = {
     );
     return res.data;
   },
-  async adminCreateBanner(input: { title: string; placement: "home" | "products" | "checkout"; active?: boolean }) {
+  async adminCreateBanner(input: { title: string; description?: string; image_url?: string; placement: "home" | "products" | "checkout"; active?: boolean }) {
     const res = await apiFetch<ApiResponse<MarketingBanner>>(
       "/admin/marketing/banners",
       { method: "POST", body: JSON.stringify(input) },
@@ -370,7 +372,7 @@ export const api = {
     );
     return res.data;
   },
-  async adminUpdateBanner(id: string, input: { title?: string; placement?: "home" | "products" | "checkout"; active?: boolean }) {
+  async adminUpdateBanner(id: string, input: { title?: string; description?: string; image_url?: string; placement?: "home" | "products" | "checkout"; active?: boolean }) {
     const res = await apiFetch<ApiResponse<MarketingBanner>>(
       `/admin/marketing/banners/${id}`,
       { method: "PATCH", body: JSON.stringify(input) },
