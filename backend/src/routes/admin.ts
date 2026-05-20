@@ -336,6 +336,8 @@ router.post("/marketing/banners", async (req, res, next) => {
     const payload = z
       .object({
         title: z.string().min(3).max(80),
+        description: z.string().max(500).optional(),
+        image_url: z.string().optional(),
         placement: z.enum(["home", "products", "checkout"]),
         active: z.boolean().optional()
       })
@@ -345,6 +347,8 @@ router.post("/marketing/banners", async (req, res, next) => {
       .from("marketing_banners")
       .insert({
         title: payload.title,
+        description: payload.description ?? null,
+        image_url: payload.image_url ?? null,
         placement: payload.placement,
         active: payload.active ?? true
       })
@@ -367,6 +371,8 @@ router.patch("/marketing/banners/:id", async (req, res, next) => {
     const payload = z
       .object({
         title: z.string().min(3).max(80).optional(),
+        description: z.string().max(500).optional(),
+        image_url: z.string().optional(),
         placement: z.enum(["home", "products", "checkout"]).optional(),
         active: z.boolean().optional()
       })
