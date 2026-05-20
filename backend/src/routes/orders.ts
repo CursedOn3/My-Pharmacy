@@ -44,25 +44,41 @@ router.post("/", requireAuth, async (req, res, next) => {
   try {
     const payload = createSchema.parse(req.body);
 
-    // Fetch current prices from DB so unit_price is always authoritative
+    // Fetch current prices and stock from DB
     const productIds = payload.items.map((i) => i.product_id);
     const { data: products, error: productError } = await serviceClient
       .from("products")
-      .select("id, price")
+      .select("id, price, stock")
       .in("id", productIds);
 
     if (productError) {
       return next(productError);
     }
 
-    const priceMap = new Map<string, number>(
-      (products ?? []).map((p: { id: string; price: number }) => [p.id, Number(p.price)])
+    const productMap = new Map<string, { price: number; stock: number }>(
+      (products ?? []).map((p: { id: string; price: number; stock: number }) => [
+        p.id,
+        { price: Number(p.price), stock: p.stock }
+      ])
     );
+
+    // Validate stock availability
+    for (const item of payload.items) {
+      const product = productMap.get(item.product_id);
+      if (!product) {
+        return res.status(400).json({ error: `Product ${item.product_id} not found` });
+      }
+      if (product.stock < item.quantity) {
+        return res.status(400).json({
+          error: `Insufficient stock for product ${item.product_id}. Available: ${product.stock}`
+        });
+      }
+    }
 
     const itemsWithPrice = payload.items.map((item) => ({
       product_id: item.product_id,
       quantity: item.quantity,
-      unit_price: priceMap.get(item.product_id) ?? 0
+      unit_price: productMap.get(item.product_id)!.price
     }));
 
     const { data, error } = await serviceClient
@@ -84,6 +100,15 @@ router.post("/", requireAuth, async (req, res, next) => {
       return next(error);
     }
 
+    // Decrement stock for each ordered product
+    for (const item of payload.items) {
+      const current = productMap.get(item.product_id)!;
+      await serviceClient
+        .from("products")
+        .update({ stock: current.stock - item.quantity })
+        .eq("id", item.product_id);
+    }
+
     publishEvent({
       type: "order.created",
       data: { orderId: data.id, userId: req.user!.id }
@@ -102,7 +127,7 @@ router.patch("/:id/cancel", requireAuth, async (req, res, next) => {
 
     const { data: order, error: fetchErr } = await client
       .from("orders")
-      .select("id, status, user_id")
+      .select("id, status, user_id, items")
       .eq("id", id)
       .single();
 
@@ -127,6 +152,22 @@ router.patch("/:id/cancel", requireAuth, async (req, res, next) => {
 
     if (error) {
       return next(error);
+    }
+
+    // Restore stock for cancelled order items
+    const items = order.items as { product_id: string; quantity: number }[];
+    for (const item of items) {
+      const { data: product } = await serviceClient
+        .from("products")
+        .select("stock")
+        .eq("id", item.product_id)
+        .single();
+      if (product) {
+        await serviceClient
+          .from("products")
+          .update({ stock: product.stock + item.quantity })
+          .eq("id", item.product_id);
+      }
     }
 
     res.json({ data });
