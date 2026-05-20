@@ -14,11 +14,18 @@ const ProductCard = ({ p }: { p: Product }) => {
       className="group bg-card rounded-2xl border border-border p-3 shadow-card hover:shadow-soft transition-shadow cursor-pointer text-left"
     >
       <div className="relative bg-muted rounded-xl overflow-hidden aspect-square mb-3">
-        {p.discount && (
-          <span className="absolute top-2 left-2 z-10 bg-accent text-accent-foreground text-[10px] font-bold px-2 py-1 rounded-full">
-            -{p.discount}
-          </span>
-        )}
+        <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5">
+          {p.discount && (
+            <span className="bg-accent text-accent-foreground text-[10px] font-bold px-2 py-1 rounded-full">
+              -{p.discount}
+            </span>
+          )}
+          {p.stock !== undefined && p.stock <= 0 && (
+            <span className="bg-destructive text-destructive-foreground text-[10px] font-bold px-2 py-1 rounded-full">
+              Out of stock
+            </span>
+          )}
+        </div>
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -39,15 +46,17 @@ const ProductCard = ({ p }: { p: Product }) => {
           loading="lazy"
           width={512}
           height={512}
-          className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
+          className={`h-full w-full object-cover group-hover:scale-105 transition-transform duration-500 ${p.stock !== undefined && p.stock <= 0 ? "opacity-50" : ""}`}
         />
         <button
           onClick={(e) => {
             e.stopPropagation();
+            if (p.stock !== undefined && p.stock <= 0) return;
             add(p);
           }}
+          disabled={p.stock !== undefined && p.stock <= 0}
           aria-label={`Add ${p.name} to cart`}
-          className="absolute bottom-2 right-2 h-9 w-9 rounded-full bg-primary-deep text-primary-deep-foreground flex items-center justify-center shadow-soft hover:scale-110 transition-transform"
+          className="absolute bottom-2 right-2 h-9 w-9 rounded-full bg-primary-deep text-primary-deep-foreground flex items-center justify-center shadow-soft hover:scale-110 transition-transform disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
         >
           <Plus className="h-4 w-4" />
         </button>
