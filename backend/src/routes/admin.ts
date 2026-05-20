@@ -34,6 +34,17 @@ router.patch("/orders/:id", async (req, res, next) => {
       .object({ status: ORDER_STATUS })
       .parse(req.body);
 
+    // Fetch current order to check previous status
+    const { data: existing, error: fetchErr } = await serviceClient
+      .from("orders")
+      .select("status, items")
+      .eq("id", id)
+      .single();
+
+    if (fetchErr || !existing) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
     const { data, error } = await serviceClient
       .from("orders")
       .update({ status })
@@ -43,6 +54,24 @@ router.patch("/orders/:id", async (req, res, next) => {
 
     if (error) {
       return next(error);
+    }
+
+    // Restore stock if order is being cancelled from a non-cancelled state
+    if (status === "cancelled" && existing.status !== "cancelled") {
+      const items = existing.items as { product_id: string; quantity: number }[];
+      for (const item of items) {
+        const { data: product } = await serviceClient
+          .from("products")
+          .select("stock")
+          .eq("id", item.product_id)
+          .single();
+        if (product) {
+          await serviceClient
+            .from("products")
+            .update({ stock: product.stock + item.quantity })
+            .eq("id", item.product_id);
+        }
+      }
     }
 
     res.json({ data });
