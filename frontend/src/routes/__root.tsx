@@ -5,6 +5,7 @@ import { StoreProvider } from "@/context/StoreContext";
 import { FavoritesProvider } from "@/context/FavoritesContext";
 import { Toaster } from "@/components/ui/sonner";
 import ProductModal from "@/components/pharmacy/ProductModal";
+import favicon from "@/assets/favicon.png";
 
 import appCss from "../styles.css?url";
 
@@ -35,7 +36,7 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Medicare Pharmacy — 2-hour delivery" },
+      { title: "Medicare Pharmacy" },
       { name: "description", content: "Trusted online pharmacy with prescription upload, 2-hour delivery, and licensed pharmacists." },
       { name: "author", content: "Medicare" },
       { property: "og:title", content: "Medicare Pharmacy" },
@@ -44,6 +45,11 @@ export const Route = createRootRoute({
       { name: "twitter:card", content: "summary" },
     ],
     links: [
+      {
+        rel: "icon",
+        href: favicon,
+        type: "image/png",
+      },
       {
         rel: "stylesheet",
         href: appCss,
