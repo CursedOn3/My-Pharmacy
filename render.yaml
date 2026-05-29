@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: my-pharmacy-backend
+    runtime: node
+    buildCommand: npm install -g bun && bun install && bun run build
+    startCommand: bun run start
+    envVars:
+      - key: NODE_ENV
+        value: production
