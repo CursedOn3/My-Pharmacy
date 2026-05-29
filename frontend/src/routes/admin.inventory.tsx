@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState, type FormEvent } from "react";
 import { z } from "zod";
 import { useStore, type InventoryItem } from "@/context/StoreContext";
+import { CATEGORIES } from "@/lib/products";
 import {
   Boxes,
   Plus,
@@ -446,12 +447,18 @@ function ProductDialog({
               <label className="text-xs font-semibold text-primary-deep">
                 Category
               </label>
-              <input
+              <select
                 value={category}
-                onChange={(e) => setCategory(e.target.value.slice(0, 60))}
-                placeholder="Vitamins"
+                onChange={(e) => setCategory(e.target.value)}
                 className="w-full bg-muted rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
-              />
+              >
+                <option value="">Select category</option>
+                {CATEGORIES.map((cat) => (
+                  <option key={cat.slug} value={cat.name}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 

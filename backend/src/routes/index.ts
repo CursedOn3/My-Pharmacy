@@ -11,6 +11,7 @@ import favoritesRouter from "./favorites";
 import wishlistRouter from "./wishlist";
 import servicesRouter from "./services";
 import paymentsRouter from "./payments";
+import marketingRouter from "./marketing";
 
 const router = Router();
 
@@ -26,5 +27,6 @@ router.use("/favorites", favoritesRouter);
 router.use("/wishlist", wishlistRouter);
 router.use("/services", servicesRouter);
 router.use("/payments", paymentsRouter);
+router.use("/marketing", marketingRouter);
 
 export default router;

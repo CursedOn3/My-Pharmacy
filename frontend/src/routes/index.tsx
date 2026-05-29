@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Header from "@/components/pharmacy/Header";
 import Hero from "@/components/pharmacy/Hero";
 import Categories from "@/components/pharmacy/Categories";
@@ -12,8 +12,9 @@ import CTABanners from "@/components/pharmacy/CTABanners";
 import FAQ from "@/components/pharmacy/FAQ";
 import AppDownload from "@/components/pharmacy/AppDownload";
 import Footer from "@/components/pharmacy/Footer";
-import { ALL, baby, todaysDeals, trending } from "@/lib/products";
+import { ALL, baby, todaysDeals, trending, type Product } from "@/lib/products";
 import { useStore } from "@/context/StoreContext";
+import { api } from "@/lib/api";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -22,11 +23,42 @@ export const Route = createFileRoute("/")({
 function Index() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All");
+  const [trendingProducts, setTrendingProducts] = useState<Product[]>([]);
+  const [loadingTrending, setLoadingTrending] = useState(true);
   const { inventory } = useStore();
+
+  // Fetch trending products from database
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        const products = await api.listProducts(100);
+        if (active) {
+          const transformed = products.slice(0, 4).map((p) => ({
+            id: p.id,
+            name: p.name,
+            brand: "Generic",
+            category: p.category_slug || "General",
+            price: `NPR ${p.price.toFixed(2)}`,
+            image: p.image_url || "",
+            stock: p.stock,
+          }));
+          setTrendingProducts(transformed);
+        }
+      } catch (error) {
+        console.error("Failed to load trending products", error);
+        if (active) setTrendingProducts(trending);
+      } finally {
+        if (active) setLoadingTrending(false);
+      }
+    };
+    load();
+    return () => { active = false; };
+  }, []);
 
   const source = inventory.length ? inventory : ALL;
   const deals = inventory.length ? source.slice(0, 4) : todaysDeals;
-  const hot = inventory.length ? source.slice(4, 8) : trending;
+  const hot = loadingTrending ? trending : trendingProducts.length > 0 ? trendingProducts : trending;
   const babyList = inventory.length
     ? source.filter((p) => p.category.toLowerCase().includes("baby")).slice(0, 4)
     : baby;
@@ -60,7 +92,7 @@ function Index() {
           title="Trending products"
           subtitle="for you!"
           products={hot}
-          tabs={["Babies", "Sun care", "Vitamins", "Hygiene", "Diabetic care", "First aid"]}
+          tabs={loadingTrending ? [] : ["Babies", "Sun care", "Vitamins", "Hygiene", "Diabetic care", "First aid"]}
         />
         <HealthBanners />
         <ProductGrid title="Baby Food Collection" products={babyList} seeAllSlug="baby" />

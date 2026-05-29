@@ -454,6 +454,16 @@ export const api = {
       body: JSON.stringify({ encoded_response })
     }, true);
     return res.data;
+  },
+  // Public marketing banners
+  async listBanners(placement?: "home" | "products" | "checkout") {
+    const params = placement ? `?placement=${placement}` : "";
+    const res = await apiFetch<ApiResponse<MarketingBanner[]>>(`/marketing/banners${params}`);
+    return res.data;
+  },
+  async getBannerByPlacement(placement: "home" | "products" | "checkout") {
+    const banners = await this.listBanners(placement);
+    return banners.length > 0 ? banners[0] : null;
   }
 };
 
